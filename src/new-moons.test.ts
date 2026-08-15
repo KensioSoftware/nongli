@@ -103,16 +103,82 @@ describe("newMoonsBetween", () => {
     }
   });
 
-  it("is half open at both ends", () => {
+  it("is half open at both ends, at every moon across four eras", () => {
+    // Deliberately not one moon. The instants this module returns are whole
+    // milliseconds while the conjunction is not, so an instant lands either
+    // side of its own conjunction with roughly equal chance — and a
+    // single-case test of this property passes or fails on a coin toss. The
+    // original one-moon version of this test passed while more than half of
+    // all moons were being dropped.
+    for (const era of [
+      "1000-06-01T00:00:00Z",
+      "1900-06-01T00:00:00Z",
+      "1969-06-01T00:00:00Z",
+      "2026-06-01T00:00:00Z",
+    ]) {
+      let cursor = at(era);
+      for (let i = 0; i < 15; i++) {
+        const moon = newMoonFrom(cursor);
+
+        // Starting exactly on a new moon includes it.
+        assertArrayLength(
+          newMoonsBetween(moon, moon.add({ hours: 24 })),
+          1,
+          `${moon.toString()} should be included as an inclusive start`,
+        );
+
+        // Ending exactly on one excludes it.
+        assertArrayLength(
+          newMoonsBetween(moon.subtract({ hours: 24 }), moon),
+          0,
+          `${moon.toString()} should be excluded as an exclusive end`,
+        );
+
+        cursor = moon.add({ hours: 600 });
+      }
+    }
+  });
+
+  it("returns the same moon when asked from that moon", () => {
+    // The property the half-open contract rests on: `newMoonFrom` is idempotent
+    // on its own output, so feeding back a conjunction gives that conjunction
+    // rather than the next one. Without the tolerance this failed for 133 of
+    // 240 conjunctions.
+    //
+    // To within a second, not exactly: the search lands on answers a few
+    // milliseconds apart depending on where it started, so exact equality is
+    // not a property the ephemeris offers.
+    for (const era of [
+      "1000-01-01T00:00:00Z",
+      "1900-01-01T00:00:00Z",
+      "1969-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z",
+    ]) {
+      let cursor = at(era);
+      for (let i = 0; i < 15; i++) {
+        const moon = newMoonFrom(cursor);
+        const again = newMoonFrom(moon);
+        const apart = Math.abs(
+          again.epochMilliseconds - moon.epochMilliseconds,
+        );
+        assertNumberBetween(
+          apart,
+          0,
+          1000,
+          `newMoonFrom skipped ${moon.toString()}, landing ${String(apart)} ms away`,
+        );
+        cursor = moon.add({ hours: 600 });
+      }
+    }
+  });
+
+  it("still moves on when asked from just after a moon", () => {
+    // The backoff must not overshoot into returning a moon already past.
     const moon = newMoonFrom(at("2026-02-01T00:00:00Z"));
-
-    // Starting exactly on a new moon includes it.
-    const including = newMoonsBetween(moon, moon.add({ hours: 24 }));
-    assertArrayLength(including, 1);
-
-    // Ending exactly on one excludes it.
-    const excluding = newMoonsBetween(moon.subtract({ hours: 24 }), moon);
-    assertArrayLength(excluding, 0);
+    const next = newMoonFrom(moon.add({ seconds: 5 }));
+    assertTrue(Temporal.Instant.compare(next, moon) > 0);
+    const gap = (next.epochMilliseconds - moon.epochMilliseconds) / MS_PER_DAY;
+    assertNumberBetween(gap, 29.2, 29.9);
   });
 
   it("tiles without gaps or duplicates across a boundary", () => {

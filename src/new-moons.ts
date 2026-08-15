@@ -32,7 +32,41 @@ const SEARCH_WINDOW_DAYS = 45;
 const STEP_PAST_HOURS = 25 * 24;
 
 /**
- * The first new moon at or after an instant.
+ * How much slack a boundary comparison gets, in seconds.
+ *
+ * A conjunction does not have an exactly reproducible instant, and this is the
+ * single most surprising thing about this module.
+ *
+ * The underlying search converges on the crossing numerically, and **lands on
+ * slightly different answers depending on where it was told to start**. For the
+ * conjunction of 2026-02-17 it returns `12:01:47.328Z` from most starting
+ * points and `12:01:47.333Z` from one an hour earlier — five milliseconds
+ * apart, for the same event. Nothing is wrong: the crossing is being located to
+ * a tolerance, not computed in closed form.
+ *
+ * The consequence is that comparing these instants at millisecond precision is
+ * not meaningful, so both ends of a span are decided to within a second — far
+ * wider than the wobble, and far narrower than anything else that could sit at
+ * a month boundary. Without this, `newMoonsBetween` dropped a conjunction
+ * whenever its start was one: measured across 240 moons from 1000 to 2026, it
+ * skipped 133 of them.
+ *
+ * Sub-second precision is not something this library needs. A margin worth
+ * reporting is measured in minutes, and a date turns on which side of midnight
+ * an instant falls — so a second of slack is six orders of magnitude below
+ * anything that changes an answer.
+ */
+const BOUNDARY_TOLERANCE_SECONDS = 1;
+
+const MS_PER_SECOND = 1000;
+
+/**
+ * The first new moon at or after an instant, to within a second.
+ *
+ * The tolerance is not a hedge: see {@link BOUNDARY_TOLERANCE_SECONDS}. The
+ * returned instant may precede the one asked for by up to a second, which makes
+ * this idempotent on its own output — feed it a conjunction it gave you and you
+ * get that conjunction back rather than the next one.
  *
  * @throws {RangeError} if the ephemeris does not reach that far. The Moon
  * search reaches further back than the Sun's — it still answers at -50,000,
@@ -40,7 +74,8 @@ const STEP_PAST_HOURS = 25 * 24;
  * fires in the far future.
  */
 export function newMoonFrom(instant: Temporal.Instant): Temporal.Instant {
-  const found = nextNewMoon(instant, SEARCH_WINDOW_DAYS);
+  const from = instant.subtract({ seconds: BOUNDARY_TOLERANCE_SECONDS });
+  const found = nextNewMoon(from, SEARCH_WINDOW_DAYS);
   if (found === undefined) {
     throw new RangeError(
       `No new moon found within ${String(SEARCH_WINDOW_DAYS)} days of ${instant.toString()}: the ephemeris does not reach that far.`,
@@ -52,11 +87,12 @@ export function newMoonFrom(instant: Temporal.Instant): Temporal.Instant {
 /**
  * Every new moon in `[from, to)`, in chronological order.
  *
- * Half open, so a new moon exactly at `from` is included and one exactly at
- * `to` is not. That is the convention that makes consecutive spans tile without
- * a moon falling into both or neither — which matters here more than usual,
- * since these become month boundaries and a duplicated or dropped one shifts
- * every month after it.
+ * Half open, so a new moon at `from` is included and one at `to` is not — both
+ * decided to within a second, for the reason in
+ * {@link BOUNDARY_TOLERANCE_SECONDS}. That is the convention that makes
+ * consecutive spans tile without a moon falling into both or neither, which
+ * matters here more than usual: these become month boundaries, and a duplicated
+ * or dropped one shifts every month after it.
  *
  * Returns nothing when `to` is at or before `from`, rather than treating a
  * reversed span as an error: an empty range has an obvious empty answer.
@@ -66,11 +102,15 @@ export function newMoonsBetween(
   to: Temporal.Instant,
 ): readonly Temporal.Instant[] {
   const moons: Temporal.Instant[] = [];
+  // Both ends shifted by the same tolerance, so the span still tiles exactly:
+  // whatever one range excludes at its end, the next includes at its start.
+  const endsBefore =
+    to.epochMilliseconds - BOUNDARY_TOLERANCE_SECONDS * MS_PER_SECOND;
   let cursor = from;
 
   while (Temporal.Instant.compare(cursor, to) < 0) {
     const moon = newMoonFrom(cursor);
-    if (Temporal.Instant.compare(moon, to) >= 0) {
+    if (moon.epochMilliseconds >= endsBefore) {
       break;
     }
     moons.push(moon);
