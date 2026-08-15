@@ -1,15 +1,24 @@
 /**
  * The twenty-four solar terms (二十四节气).
  *
- * Each term is the moment the Sun's apparent geocentric ecliptic longitude
- * reaches a multiple of 15°. They are the solar half of a lunisolar calendar:
- * the months come from the Moon, and these keep those months tied to the
- * seasons.
+ * Over a year the Sun appears to travel a full circle against the stars. Cut
+ * that circle into twenty-four equal slices of 15° and each cut is a **solar
+ * term**: a moment, about a fortnight after the last, named for the season it
+ * opens — 立春 "start of spring", 大雪 "heavy snow", 冬至 the December solstice.
  *
- * Twelve of them are 中气 — the major terms, at multiples of 30° — and those do
- * the calendrical work. A month containing no 中气 is what the leap rule looks
- * for, and 冬至 at 270° is what fixes month 11. The other twelve, the 节气
- * proper, mark the divisions between them.
+ * They are the solar half of a lunisolar calendar. The months come from the
+ * Moon; these keep those months tied to the seasons, which is why a term lands
+ * on nearly the same Gregorian date every year while lunar months wander.
+ *
+ * Twelve of them — those at multiples of 30°, every other one — are **中气**,
+ * the major terms, and those do the calendrical work:
+ *
+ * > A lunar month containing no 中气 is the leap month.
+ * > The month containing 冬至 is month 11.
+ *
+ * The other twelve, the 节气 proper, mark the divisions between them.
+ *
+ * See [the concepts guide](../docs/concepts/) for the longer version.
  *
  * ## What this module returns, and what it does not
  *

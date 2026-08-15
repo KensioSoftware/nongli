@@ -1,18 +1,34 @@
 /**
  * New moons (朔), which are where lunar months begin.
  *
- * The rule the calendar is built on is short: a lunar month begins on the day
- * containing the new moon. Everything hard about that is in the word *day* —
- * the new moon is an instant, and which day contains it depends on the meridian
- * whose midnight you measure against. So this module, like
- * {@link ./solar-term-times.js}, returns instants and leaves the day to
- * whatever knows about places.
+ * ## What a new moon is here
  *
- * A new moon here is the astronomical conjunction: the moment the Moon and Sun
- * share an apparent ecliptic longitude. Not first visibility of the crescent,
- * which is a different event, days later, and depends on the observer — some
- * other lunar calendars are built on that instead, and conflating the two is a
- * common way to be a day or two wrong.
+ * A **new moon** is the moment the Moon passes between the Earth and the Sun,
+ * so the side facing us is unlit and the Moon is invisible. Astronomers call
+ * that moment the **conjunction** — Moon and Sun in the same direction from
+ * Earth — and it is a precise instant, the same one for everybody on the planet.
+ *
+ * **It is not first sight of the crescent.** That happens a day or two later,
+ * and depends on where the observer stands and how clear the sky is. Some lunar
+ * calendars begin their months that way; the 农历 does not, and conflating the
+ * two is a common way to be a day or two wrong.
+ *
+ * The rule the calendar is built on is short:
+ *
+ * > A lunar month begins on the day containing the new moon.
+ *
+ * ## Why this returns instants and not dates
+ *
+ * Everything hard about that rule is in the word *day*. The conjunction is one
+ * moment, but **which day contains it depends on where you are** — a new moon at
+ * 23:50 in Beijing is 15:50 the same day in London, and near midnight the two
+ * can fall on different dates.
+ *
+ * So an instant is a fact and a date is a fact plus a place. This module, like
+ * {@link ./solar-term-times.js}, deals only in instants and leaves the day to
+ * whatever knows about meridians.
+ *
+ * See [the concepts guide](../docs/concepts/) for the longer version.
  */
 
 import { nextNewMoon } from "./ephemeris.js";
@@ -20,11 +36,15 @@ import { nextNewMoon } from "./ephemeris.js";
 /**
  * How far to search for the next new moon.
  *
- * A synodic month runs between about 29.3 and 29.8 days — the spread comes from
- * the eccentricity of both the lunar and terrestrial orbits — so 45 days
- * comfortably contains one wherever the search starts. Unlike the solar search,
- * a longer window here costs nothing but time: {@link nextNewMoon} returns the
- * same answer for any window from 30 to 1000 days.
+ * The gap between one new moon and the next is a **synodic month**. It averages
+ * about 29.5 days but genuinely varies between roughly 29.3 and 29.8, because
+ * neither the Moon's orbit around the Earth nor the Earth's around the Sun is a
+ * circle — which is also why lunar months are sometimes 29 days and sometimes
+ * 30, and why they cannot be worked out by multiplication.
+ *
+ * So 45 days comfortably contains one wherever the search starts. Unlike the
+ * solar search, a longer window here costs nothing but time: {@link nextNewMoon}
+ * returns the same answer for any window from 30 to 1000 days.
  */
 const SEARCH_WINDOW_DAYS = 45;
 

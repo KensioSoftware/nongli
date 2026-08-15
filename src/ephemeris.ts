@@ -34,6 +34,14 @@ const toInstant = (time: astronomy.AstroTime): Temporal.Instant =>
 /**
  * The Sun's apparent geocentric ecliptic longitude at an instant, in degrees.
  *
+ * Which unpacks as: **how far through the year the Sun is**, measured as an
+ * angle from 0 to 360 rather than in days. 0° is the March equinox, 90° the June
+ * solstice, 180° September, 270° December. *Ecliptic* is the path the Sun traces
+ * against the stars over a year; *geocentric* means as seen from the Earth
+ * rather than from the Sun; *apparent* means with the small corrections for
+ * light taking time to arrive. The last two affect accuracy and never change
+ * what the number means.
+ *
  * Total: there is a position for every instant, so nothing to report absent.
  */
 export function sunLongitude(at: Temporal.Instant): number {
@@ -41,9 +49,9 @@ export function sunLongitude(at: Temporal.Instant): number {
 }
 
 /**
- * The instant the Sun next reaches a given apparent ecliptic longitude,
+ * The instant the Sun next reaches a given point in its yearly circuit,
  * searching forward from `from`, or `undefined` if it does not do so within
- * `withinDays`.
+ * `withinDays`. See {@link sunLongitude} for what the angle means.
  *
  * ## Keep the window short
  *
@@ -73,6 +81,10 @@ export function sunReachesLongitude(
 /**
  * The instant of the first new moon at or after `from`, or `undefined` if there
  * is none within `withinDays`.
+ *
+ * A new moon is the moment the Moon passes between the Earth and the Sun — the
+ * conjunction — not first sight of the crescent. See
+ * {@link ./new-moons.js} for why that distinction matters.
  *
  * Unlike {@link sunReachesLongitude} this one is not sensitive to the window
  * length — it returns the same answer for any window from 30 to 1000 days,
