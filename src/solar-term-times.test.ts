@@ -10,7 +10,7 @@ import {
 } from "@kensio/smartass";
 import { describe, it } from "vitest";
 
-import { solarTermInstant, solarTermsIn } from "./ephemeris.js";
+import { solarTermInstant, solarTermsIn } from "./solar-term-times.js";
 import { SOLAR_TERMS, solarTermNamed, TERM_COUNT } from "./solar-terms.js";
 
 /** A year in the middle of the well-attested range, for the timing checks. */
