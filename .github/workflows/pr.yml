@@ -1,0 +1,209 @@
+---
+name: PR
+
+on:
+  pull_request:
+    branches:
+      - main
+  # release.yml opens its version pull request with GITHUB_TOKEN, and a pull
+  # request opened with that token does not fire `pull_request` — GitHub
+  # declines to let a workflow start another workflow. Without this the main
+  # intended ruleset's three required checks would never report on it and it
+  # could never be merged. See the setup notes at the top of release.yml.
+  #
+  # A ruleset matches a check by name whatever workflow posted it, and these
+  # are the same three jobs under the same three names, so running them on the
+  # push satisfies the same gate. Scoped to the branch prefix release.yml uses,
+  # so ordinary branches still get one run rather than two.
+  push:
+    branches:
+      - "release/**"
+
+defaults:
+  run:
+    shell: bash
+
+# Only the head of a branch is worth checking. Pushing a fixup while the
+# previous commit is still running abandons that run instead of queueing
+# behind it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # `lint:ci` is `lint` with oxlint's GitHub formatter, which annotates the
+      # diff itself so a failure is readable where the change is rather than
+      # only in the log.
+      - run: pnpm lint:ci
+      - run: pnpm fta
+      # nongli.dev builds its pages out of docs/ here. A page that breaks its
+      # scaffold breaks it in that repo, at deploy time, long after the change
+      # responsible. Cheaper to find it on the pull request that wrote it.
+      - run: pnpm docs:check
+
+  # One runtime, not a matrix. `engines` floors at Node 26 and .nvmrc develops
+  # against 26, so "the floor" and "the version we develop against" are the
+  # same runtime and there is no second one to prove anything on.
+  #
+  # The floor is 26 because `Temporal` is a global there and is not on 24. That
+  # is the substrate this package is built on rather than a nicety, so the
+  # alternative was shipping a polyfill to consumers who mostly do not need
+  # one.
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:coverage
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:check
+      - run: pnpm build
+      # What gets published is the tarball, not the working tree, and the two
+      # differ in ways nothing else here would catch. It rides along with the
+      # build rather than taking a runner of its own: `pnpm pack` runs the
+      # build again anyway, and a job spends far longer installing than either
+      # of these takes.
+      - run: pnpm pack:check
+
+  # The subject that lands on main, which is the release note.
+  #
+  # These merge as squashes, so a subject here becomes a commit subject on main,
+  # and that subject is both what semantic-release reads to decide the version
+  # and — since there is no CHANGELOG.md — the line a reader of the release
+  # sees. One that does not parse as a conventional commit is therefore two
+  # failures at once, and both are silent: the change releases nothing, and it
+  # appears in no notes. Nothing downstream can report that, because "no
+  # release" and "nothing releasable happened" look the same from there.
+  #
+  # So it is asked here, while the change is still in front of its author and
+  # one edit away. The types are read out of .releaserc.yaml rather than
+  # repeated, so this cannot drift from what actually publishes; the ones that
+  # release nothing are listed because a subject still has to parse to be a
+  # legal one, whether or not it ships.
+  #
+  # Which string will land is a repository setting rather than something this
+  # file can assume, so the step below asks rather than guessing. See item 4 in
+  # release.yml's setup notes.
+  #
+  # Deliberately not proposed as one of main's required checks. The other three
+  # say the code works, which is a different kind of claim, and whether a badly
+  # titled pull request should be blocked or only embarrassed is a decision for
+  # the settings page rather than for this file.
+  title:
+    name: Title
+    # The `release/**` push above is release.yml's own version pull request,
+    # which has no `pull_request` payload to read.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      # Also covers reading the head commit's subject, below.
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check the subject that will land on main
+        env:
+          # Through the environment rather than interpolated into the script.
+          # A title is text anyone opening a pull request chooses, and `${{ }}`
+          # pastes it in as shell source before bash ever sees it.
+          TITLE: ${{ github.event.pull_request.title }}
+          # Both of these come from the same event payload, so they describe the
+          # same revision of the pull request. Counting commits from the payload
+          # and then fetching them fresh would not: a push between the event and
+          # this job would have it read one commit out of a branch that now has
+          # two, and check a subject that is no longer the one landing.
+          COMMIT_COUNT: ${{ github.event.pull_request.commits }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Which string GitHub will actually use as the squash subject is a
+          # repository setting, not something this file can assume. Under
+          # PR_TITLE it is always the pull request title; under GitHub's default
+          # of COMMIT_OR_PR_TITLE a single-commit pull request squashes with
+          # that commit's subject instead, and checking the title would then be
+          # checking a string that never reaches main. So ask.
+          setting="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.squash_merge_commit_title')"
+
+          if [[ "$setting" == "COMMIT_OR_PR_TITLE" && "$COMMIT_COUNT" == "1" ]]; then
+            # The subject is taken inside jq rather than by piping to `head`,
+            # which would close the pipe under `gh` and, with `pipefail` set,
+            # fail the step on a SIGPIPE that means nothing went wrong.
+            landing="$(
+              gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA" \
+                --jq '.commit.message | split("\n")[0]'
+            )"
+            source="the commit subject, which is what a one-commit squash uses"
+          else
+            landing="$TITLE"
+            source="the pull request title"
+          fi
+
+          # The types under `releaseRules:` in .releaserc.yaml. Anchored to
+          # that block, because the notes generator further down the file lists
+          # its own `- type:` entries and they are a different question.
+          releasing="$(
+            awk '
+              /^      releaseRules:/ { inside = 1; next }
+              inside && !/^        / { exit }
+              inside && $1 == "-" && $2 == "type:" { print $3 }
+            ' .releaserc.yaml | paste -sd '|' -
+          )"
+          # The rest of the conventional set. These publish nothing, so a
+          # change titled with one of them says nothing in the notes either —
+          # which is the point of them, not a problem with them.
+          silent="docs|test|chore|ci|style|revert"
+
+          # The header pattern conventional-commits-parser actually uses, with
+          # the type narrowed to the ones this repository recognises.
+          subject="^(${releasing}|${silent})(\([^)]+\))?!?: .+"
+
+          if [[ ! "$landing" =~ $subject ]]; then
+            echo "::error::\"$landing\" is not a conventional commit subject. This is ${source}, so it becomes the commit message on main and the line in the release notes, and a subject that does not parse releases nothing and appears nowhere. Expected one of ${releasing}|${silent}, optionally scoped, then ': ' and a description."
+            exit 1
+          fi
+
+          echo "\"$landing\" parses (${source})."

@@ -1,2 +1,3 @@
-# nongli
-Modern TypeScript library for the Chinese lunisolar calendar (农历)
+# Nongli
+
+Chinese calendrical and historical chronology utilities for JavaScript and Temporal
