@@ -19,14 +19,17 @@
 #      pushed by hand to create @kensio/nongli, and it is the one version that
 #      will carry no provenance attestation; everything after it goes through
 #      OIDC.
-#      STATUS: not set up, and blocked on the bootstrap publish. The name is
-#      unclaimed on the registry, and the bootstrap publish cannot happen
-#      until there is a `src/index.ts` to build: `prepack` runs `pnpm build`,
-#      and tsc fails with TS18003 when `include: ["src/**/*"]` matches nothing.
-#      So the order is: write something publishable, hand-publish to claim the
-#      name, then attach the trusted publisher here. Once it is configured this
-#      is the one item not verifiable from a checkout, because npm exposes no
-#      public endpoint for it, which is why it is written down here.
+#      STATUS: half done. The bootstrap publish happened on 2026-08-15 —
+#      0.1.0, published by hand, and `latest` on the registry. That is the
+#      version with no provenance attestation, and the only one there will
+#      ever be.
+#
+#      The trusted publisher itself is NOT attached yet, so a run of this
+#      workflow would get as far as the publish step and fail there. Attach it
+#      before running this for real. It is the one item on this list that
+#      cannot be verified from a checkout, because npm exposes no public
+#      endpoint for it, which is why it is written down here rather than
+#      checked.
 #
 #   2. A repository environment named "release". Adding a required reviewer
 #      makes a publish wait for a second pair of eyes, which is worth having
@@ -75,15 +78,16 @@ on:
   # releases from main only, so semantic-release finds nothing to do.
   #
   # This package stays on 0.x until there is enough of a library to be worth
-  # promising stability about, so the first run has a prerequisite: an
-  # annotated v0.1.0 tag has to exist before it.
+  # promising stability about. That needs an annotated tag to anchor it, and
+  # v0.1.0 is in place as of 2026-08-15, on the commit that squashed #1. The
+  # next release from here is therefore 0.1.1.
   #
-  # semantic-release starts at 1.0.0 when it finds no tag, whatever the commit
-  # subjects say and whatever version package.json holds. The `version` field
-  # reading 0.1.0 will not hold the line on its own, and neither will the
-  # hand-pushed bootstrap version on npm — that is a registry entry, not a tag,
-  # and semantic-release never looks at it. Only the tag anchors the line. With
-  # v0.1.0 in place the first release comes out 0.1.1 rather than 1.0.0.
+  # Why a tag and not something easier: semantic-release starts at 1.0.0 when
+  # it finds none, whatever the commit subjects say and whatever version
+  # package.json holds. The `version` field would not have held the line on its
+  # own, and neither does the hand-published 0.1.0 on npm — that is a registry
+  # entry, not a tag, and semantic-release never looks at it. Deleting the tag
+  # would put the next run back to 1.0.0.
   #
   # This is enforced rather than left to memory: .releaserc.yaml fails the run
   # when there is no previous release to count from, which is exactly the state
