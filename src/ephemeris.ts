@@ -44,7 +44,15 @@ const SEARCH_WINDOW_DAYS = 25;
 const MS_PER_DAY = 86_400_000;
 
 /**
- * The instant a solar term occurs in a given Gregorian year.
+ * The instant a solar term occurs in a given ISO year.
+ *
+ * `isoYear` is a proleptic Gregorian year — the same numbering Temporal's
+ * `iso8601` calendar uses, negative for BCE, with no year zero skipped. It is
+ * named for the system rather than called `year` because in this library that
+ * would be a genuinely ambiguous word: a Chinese year, a sexagenary year and a
+ * regnal year are all years, and Temporal offers no type that would tell them
+ * apart. Its own `PlainDate.year` is 2026 for 2026-02-17 under *both* the ISO
+ * and Chinese calendars, so the number carries no evidence of which it is.
  *
  * The Sun sits near 280° at the start of January, so every term's longitude is
  * reached exactly once between one 1 January and the next — including 冬至 at
@@ -65,23 +73,25 @@ const MS_PER_DAY = 86_400_000;
  * the date from the Sun's mean motion, then search a few weeks around it. That
  * is faster as well as correct, since the search has far less ground to cover.
  *
- * @throws {RangeError} if `year` is not a whole number, or if the search finds
- * nothing — which now means the ephemeris has genuinely been pushed past where
- * it is defined, rather than the window being too wide.
+ * @throws {RangeError} if `isoYear` is not a whole number, or if the search
+ * finds nothing — which now means the ephemeris has genuinely been pushed past
+ * where it is defined, rather than the window being too wide.
  */
 export function solarTermInstant(
   term: SolarTerm,
-  year: number,
+  isoYear: number,
 ): Temporal.Instant {
-  if (!Number.isInteger(year)) {
-    throw new RangeError(`A year must be a whole number; got ${String(year)}.`);
+  if (!Number.isInteger(isoYear)) {
+    throw new RangeError(
+      `An ISO year must be a whole number; got ${String(isoYear)}.`,
+    );
   }
 
   // Through Temporal rather than `Date.UTC`, which maps years 0 to 99 onto
   // 1900 to 1999 and would silently compute the wrong century for a hundred
   // years of the supported range.
   const yearStart = Temporal.PlainDate.from({
-    year,
+    year: isoYear,
     month: 1,
     day: 1,
   }).toZonedDateTime("UTC").epochMilliseconds;
@@ -99,7 +109,7 @@ export function solarTermInstant(
 
   if (found === null) {
     throw new RangeError(
-      `No ${term.name} found in ${String(year)}: the ephemeris does not reach that year.`,
+      `No ${term.name} found in ${String(isoYear)}: the ephemeris does not reach that year.`,
     );
   }
 
@@ -113,15 +123,18 @@ export interface DatedSolarTerm {
 }
 
 /**
- * Every solar term falling in a given Gregorian year, in chronological order.
+ * Every solar term falling in a given ISO year, in chronological order.
  *
  * Always twenty-four of them: each solar longitude is reached exactly once a
- * year, so a Gregorian year contains a full set regardless of where the terms
- * sit within it.
+ * year, so an ISO year contains a full set regardless of where the terms sit
+ * within it.
+ *
+ * See {@link solarTermInstant} for why the parameter is `isoYear` rather than
+ * `year`.
  */
-export function solarTermsIn(year: number): readonly DatedSolarTerm[] {
+export function solarTermsIn(isoYear: number): readonly DatedSolarTerm[] {
   return SOLAR_TERMS.map((term) => ({
     term,
-    instant: solarTermInstant(term, year),
+    instant: solarTermInstant(term, isoYear),
   })).toSorted((a, b) => Temporal.Instant.compare(a.instant, b.instant));
 }

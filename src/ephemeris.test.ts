@@ -55,7 +55,7 @@ describe("solarTermInstant", () => {
     }
   });
 
-  it("refuses a year that is not a whole number", () => {
+  it("refuses an ISO year that is not a whole number", () => {
     const term = SOLAR_TERMS[0];
     assertNonNullable(term);
     for (const bad of [2026.5, Number.NaN, Number.POSITIVE_INFINITY]) {
@@ -64,7 +64,7 @@ describe("solarTermInstant", () => {
     }
   });
 
-  it("refuses what JavaScript would coerce to a year", () => {
+  it("refuses what JavaScript would coerce to an ISO year", () => {
     const term = SOLAR_TERMS[0];
     assertNonNullable(term);
     for (const bad of [null, undefined, "", "2026", [], {}]) {
