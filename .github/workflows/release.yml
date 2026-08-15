@@ -7,10 +7,16 @@
 # five are in place as of 2026-08-15; this is the list, what breaks if one of
 # them is ever undone, and where each one stands.
 #
-# Keep the STATUS lines honest. Four of the five can be read back with
-# `gh api repos/KensioSoftware/nongli` and its `/rulesets` endpoint, so they
-# can be checked against reality; the npm trusted publisher cannot, and these
-# notes are the only record of it.
+# Keep the STATUS lines honest. Four of the five can be read back from the
+# GitHub API rather than taken on trust, each from its own endpoint:
+#
+#     item 2  gh api repos/KensioSoftware/nongli/environments
+#     item 3  gh api repos/KensioSoftware/nongli/actions/permissions/workflow
+#     item 4  gh api repos/KensioSoftware/nongli
+#     item 5  gh api repos/KensioSoftware/nongli/rulesets
+#
+# Item 1, the npm trusted publisher, cannot be: npm exposes no public endpoint
+# for it, so what is written below is the only record of it there is.
 #
 #   1. A trusted publisher on npmjs.com for @kensio/nongli, pointing at this
 #      repository, this workflow file, and the "release" environment below,
@@ -28,10 +34,9 @@
 #      same day — 0.1.0, published by hand, `latest` on the registry, and the
 #      one version with no provenance attestation that there will ever be.
 #
-#      This is the only item here that cannot be read back from a checkout,
-#      because npm exposes no public endpoint for it. Every other STATUS below
-#      can be confirmed with `gh api repos/KensioSoftware/nongli`; this one is
-#      written down because writing it down is the whole record.
+#      This is the item the note above singles out: the other four can be
+#      confirmed against their endpoints, and this one cannot be confirmed at
+#      all. It is written down because writing it down is the whole record.
 #
 #   2. A repository environment named "release". Adding a required reviewer
 #      makes a publish wait for a second pair of eyes, which is worth having
