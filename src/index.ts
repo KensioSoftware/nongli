@@ -35,5 +35,7 @@ export {
   TERM_COUNT,
 } from "./solar-terms.js";
 
-export type { DatedSolarTerm } from "./ephemeris.js";
-export { solarTermInstant, solarTermsIn } from "./ephemeris.js";
+export type { DatedSolarTerm } from "./solar-term-times.js";
+export { solarTermInstant, solarTermsIn } from "./solar-term-times.js";
+
+export { newMoonFrom, newMoonsBetween } from "./new-moons.js";
