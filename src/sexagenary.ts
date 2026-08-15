@@ -82,9 +82,22 @@ export interface Sexagenary {
  *
  * @throws {RangeError} if `index` is not a whole number. There is no sensible
  * term two and a half places along, and quietly rounding to one would be worse
- * than refusing.
+ * than refusing. JavaScript callers get the same refusal for anything that is
+ * not a number at all, rather than the term its coercion happens to land on.
  */
 export function sexagenary(index: number): Sexagenary {
+  // A runtime check on a parameter TypeScript has already typed, because half
+  // of what this package ships to is JavaScript. It cannot be a `typeof` test —
+  // TypeScript reads that as a condition that can only go one way and the lint
+  // rejects it — and `Number.isInteger` is the better test anyway: `null`, `""`,
+  // `[]` and `false` all coerce to 0 through the arithmetic below, and would
+  // otherwise come back as a confident 甲子.
+  if (!Number.isInteger(index)) {
+    throw new RangeError(
+      `A sexagenary index must be a whole number; got ${String(index)}.`,
+    );
+  }
+
   // Not `index % CYCLE_LENGTH` alone: that keeps the sign of the operand in
   // JavaScript, so -1 would come back as -1 rather than as 癸亥.
   const position = ((index % CYCLE_LENGTH) + CYCLE_LENGTH) % CYCLE_LENGTH;
@@ -92,14 +105,13 @@ export function sexagenary(index: number): Sexagenary {
   const stem = STEMS[position % STEMS.length];
   const branch = BRANCHES[position % BRANCHES.length];
 
-  // Reachable, and the only validation this needs. A whole number always lands
-  // on both rings, so the lookups can only come back empty when `index` was
-  // fractional or not a number at all — which is exactly what is being refused.
+  /* v8 ignore start -- a whole number always lands on both rings, so this
+     cannot happen. It is here because `noUncheckedIndexedAccess` has no way to
+     know that, and the alternative is a non-null assertion the lint forbids. */
   if (stem === undefined || branch === undefined) {
-    throw new RangeError(
-      `A sexagenary index must be a whole number; got ${index}.`,
-    );
+    throw new RangeError(`No sexagenary term at position ${position}.`);
   }
+  /* v8 ignore stop */
 
   return { index: position, stem, branch };
 }

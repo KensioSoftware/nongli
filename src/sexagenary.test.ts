@@ -93,6 +93,17 @@ describe("sexagenary", () => {
       assertInstanceOf(error, RangeError);
     }
   });
+
+  it("refuses what JavaScript would quietly coerce to a position", () => {
+    // Only reachable from JavaScript, which is half of what this package ships
+    // to. Every one of these coerces to a whole number through `%` — `null`,
+    // `""`, `[]` and `false` to 0, and the rest to a real position — so without
+    // the guard they come back as confident, wrong terms rather than errors.
+    for (const bad of [null, undefined, "", "5", [], [3], false, {}]) {
+      const error = assertThrowsError(() => sexagenary(bad as number));
+      assertInstanceOf(error, RangeError);
+    }
+  });
 });
 
 describe("sexagenaryOf", () => {

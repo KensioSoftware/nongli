@@ -141,6 +141,16 @@ plugins:
   # released from here at all, and pre-1.0 those are expected. The way through
   # is the same hand publish, not a `feat!:` and a retry.
   #
+  # The second guard covers the one route to 1.0.0 that the first cannot see.
+  # With no tag to count from, semantic-release does not bump anything:
+  # get-next-version.js takes an `else` branch that returns its FIRST_RELEASE
+  # constant outright, so the version is 1.0.0 while `type` stays whatever the
+  # commit subjects earned — `patch`, most likely. A guard reading `type` is
+  # therefore looking at the wrong field and waves it through. Checking that a
+  # previous release exists is what actually catches it, and it says the useful
+  # thing besides: the v0.1.0 tag that anchors the 0.x line has not been pushed
+  # yet.
+  #
   - - "@semantic-release/exec"
     - analyzeCommitsCmd: >-
         if [ "$RELEASE_MINOR" = "true" ]; then echo minor; fi
@@ -148,6 +158,13 @@ plugins:
         if [ "${nextRelease.type}" = "major" ]; then
         echo "Refusing to publish ${nextRelease.version} automatically:
         major releases are published by hand." >&2;
+        exit 1;
+        fi;
+        if [ -z "${lastRelease.version}" ]; then
+        echo "Refusing to publish ${nextRelease.version}: there is no previous
+        release to count from, so this is semantic-release's first-release
+        version rather than a bump of anything. Push an annotated v0.1.0 tag to
+        anchor the 0.x line, then run this again." >&2;
         exit 1;
         fi
       # Read by the workflow, which needs the version to open the pull request

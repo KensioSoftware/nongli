@@ -85,6 +85,13 @@ on:
   # and semantic-release never looks at it. Only the tag anchors the line. With
   # v0.1.0 in place the first release comes out 0.1.1 rather than 1.0.0.
   #
+  # This is enforced rather than left to memory: .releaserc.yaml fails the run
+  # when there is no previous release to count from, which is exactly the state
+  # that produces 1.0.0. Worth knowing why that guard is separate from the one
+  # refusing majors — with no tag, semantic-release returns its first-release
+  # constant without bumping anything, so the version is 1.0.0 while the type
+  # is still `patch`, and a guard reading the type sees nothing wrong.
+  #
   # Nothing after that needs watching: from 0.1.0 a patch gives 0.1.1 and the
   # minor checkbox below gives 0.2.0, both of which stay on 0.x, and the only
   # bump that would leave it is a major — which .releaserc.yaml refuses
