@@ -3,9 +3,14 @@
 # What it does is decided by .releaserc.yaml; this file is the plumbing.
 #
 # Several things this depends on live in repository or npm settings rather than
-# in any file here, so nothing in a checkout can prove they are still true.
-# This is the list, what breaks without each one, and where each one currently
-# stands. Keep the STATUS lines honest: they are the only record there is.
+# in any file here, so nothing in a checkout can prove they are still true. All
+# five are in place as of 2026-08-15; this is the list, what breaks if one of
+# them is ever undone, and where each one stands.
+#
+# Keep the STATUS lines honest. Four of the five can be read back with
+# `gh api repos/KensioSoftware/nongli` and its `/rulesets` endpoint, so they
+# can be checked against reality; the npm trusted publisher cannot, and these
+# notes are the only record of it.
 #
 #   1. A trusted publisher on npmjs.com for @kensio/nongli, pointing at this
 #      repository, this workflow file, and the "release" environment below,
@@ -19,17 +24,14 @@
 #      pushed by hand to create @kensio/nongli, and it is the one version that
 #      will carry no provenance attestation; everything after it goes through
 #      OIDC.
-#      STATUS: half done. The bootstrap publish happened on 2026-08-15 —
-#      0.1.0, published by hand, and `latest` on the registry. That is the
-#      version with no provenance attestation, and the only one there will
-#      ever be.
+#      STATUS: configured, on 2026-08-15. The bootstrap publish happened the
+#      same day — 0.1.0, published by hand, `latest` on the registry, and the
+#      one version with no provenance attestation that there will ever be.
 #
-#      The trusted publisher itself is NOT attached yet, so a run of this
-#      workflow would get as far as the publish step and fail there. Attach it
-#      before running this for real. It is the one item on this list that
-#      cannot be verified from a checkout, because npm exposes no public
-#      endpoint for it, which is why it is written down here rather than
-#      checked.
+#      This is the only item here that cannot be read back from a checkout,
+#      because npm exposes no public endpoint for it. Every other STATUS below
+#      can be confirmed with `gh api repos/KensioSoftware/nongli`; this one is
+#      written down because writing it down is the whole record.
 #
 #   2. A repository environment named "release". Adding a required reviewer
 #      makes a publish wait for a second pair of eyes, which is worth having
@@ -50,20 +52,31 @@
 #      the release notes are made of. A merge commit or a rebase merge puts
 #      subjects on main that pr.yml never checked, so re-enabling either one
 #      quietly removes the guarantee the Title check exists to give.
-#      STATUS: not set. All three merge methods are still allowed and the
-#      squash subject is GitHub's default of "commit or pull request title",
-#      which is not the same thing — on a one-commit pull request it takes the
-#      commit subject instead. pr.yml's Title check asks the API which setting
-#      is in force and checks whichever string will actually land, so nothing
-#      is unguarded in the meantime; what is missing is the guarantee that the
-#      string is the one someone wrote on the pull request.
+#      STATUS: set, on 2026-08-15. Squash is the only method — merge commits
+#      and rebase merges are both off — and the subject is `PR_TITLE`, so the
+#      string pr.yml checked is the string that lands. The Title check reads
+#      this setting from the API rather than assuming it, so it follows along
+#      if this is ever changed back.
+#
+#      The squash *body* is `BLANK` rather than the commit messages, which is
+#      the part worth not changing casually. Concatenating the branch's commit
+#      messages into the body puts their footers on main, and
+#      commit-analyzer reads footers: one `BREAKING CHANGE:` on some
+#      intermediate commit would be read as a major, which .releaserc.yaml
+#      then refuses outright. A whole release fails on a footer nobody meant
+#      to publish. Blank cannot do that.
 #
 #   5. A ruleset on main requiring the Lint, Test and Build checks. Several
 #      comments below explain themselves in terms of it — in particular why the
 #      version job opens a pull request rather than pushing.
-#      STATUS: none configured. Main is unprotected. The version job's pull
-#      request is the right shape with or without a ruleset, so nothing here
-#      waits on it, but until it exists the three checks are advisory.
+#      STATUS: active on the default branch as of 2026-08-15, requiring Lint,
+#      Test and Build. That is all it requires — there is no pull-request rule
+#      on it, and nothing refusing deletion or a non-fast-forward push. So the
+#      three checks are enforced and the shape of how a change arrives is not.
+#      Worth knowing before reading the version job at the bottom, which opens
+#      a pull request rather than pushing: it does that because a commit made
+#      inside that run has no checks on it, which this ruleset would reject.
+#      That reasoning holds under the ruleset as configured.
 
 name: Release
 
