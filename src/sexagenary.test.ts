@@ -130,11 +130,14 @@ describe("the sexagenary cycle", () => {
 
     it("refuses what JavaScript would quietly coerce to a position", () => {
       // Given values only a JavaScript caller can pass, half of what this
-      // package ships to. Each coerces to a whole number through `%`: `null`,
-      // `""`, `[]` and `false` land on 0, the rest on a real position.
+      // package ships to. Six of the eight coerce to a whole number through
+      // `%` and so look like real positions. `null`, `""`, `[]` and `false`
+      // land on 0, `"5"` on 5, `[3]` on 3. (`undefined` and `{}` give NaN.
+      // They were never the dangerous cases, because a lookup on NaN finds
+      // nothing whatever the guard does.)
       // When each is looked up.
-      // Then the lookup refuses. Without the guard they came back as 甲子 and
-      // other terms that were never asked for.
+      // Then the lookup refuses. Without the guard the six came back as 甲子
+      // and other terms that were never asked for.
       for (const bad of [null, undefined, "", "5", [], [3], false, {}]) {
         const error = assertThrowsError(() => sexagenary(bad as number));
         assertInstanceOf(error, RangeError);

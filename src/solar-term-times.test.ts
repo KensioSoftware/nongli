@@ -81,8 +81,9 @@ describe("when the solar terms happen", () => {
     });
 
     it("refuses what JavaScript would coerce to an ISO year", () => {
-      // Given values only a JavaScript caller can pass, each of which coerces
-      // to a number somewhere in the arithmetic.
+      // Given values only a JavaScript caller can pass. Four of the six
+      // coerce to a whole number in the arithmetic that follows. (`undefined`
+      // and `{}` give NaN, which the same check refuses for its own reason.)
       // When a term is computed for each.
       // Then it refuses. Answering would mean answering for a year nobody
       // asked about.
