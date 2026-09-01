@@ -46,7 +46,7 @@ lunisolarYear(2033).filter((month) => month.isLeap);
 
 2033 is the case naive implementations get wrong. Its year has **two** months
 containing no 中气, so a rule stated as "the month with no 中气" has two answers
-and needs the word *first* to have one. Implementations that drop it produce
+and needs the word _first_ to have one. Implementations that drop it produce
 闰七月.
 
 ### Showing its working
@@ -63,10 +63,7 @@ const claim = explainChinese(Temporal.PlainDate.from("2057-09-28"));
 claim.value; // { year: 2057, month: 8, isLeap: false, day: 30 }
 claim.margin.total("minutes"); // 0.67
 
-claim.day.deciding.map((event) => [
-  event.role,
-  event.margin.total("minutes"),
-]);
+claim.day.deciding.map((event) => [event.role, event.margin.total("minutes")]);
 // [["month start", 715.1], ["month end", 0.67]]
 ```
 

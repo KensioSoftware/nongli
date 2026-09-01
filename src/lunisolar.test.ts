@@ -23,6 +23,7 @@ import {
 import { GOLD } from "#test/gold-dates.js";
 
 import { explainChinese } from "./claim.js";
+import { spanFromSolsticeOf } from "./lunar-months.js";
 import { fromChinese, toChinese } from "./lunisolar.js";
 import { chineseNewYear, isLeapYear, lunisolarYear } from "./lunisolar-year.js";
 import { BEIJING_LOCAL, CHINA_STANDARD, VIETNAM_STANDARD } from "./place.js";
@@ -33,6 +34,16 @@ describe("the lunisolar calendar", () => {
   /** Wide enough that a fault confined to one era shows up. */
   const FIRST_YEAR = 1900;
   const LAST_YEAR = 2100;
+
+  /**
+   * How long a sweep across the whole range is allowed.
+   *
+   * Every year of it costs a solstice search and a dozen conjunction searches,
+   * and the default five seconds is comfortable here and not on a loaded CI
+   * runner under coverage instrumentation. Raising the limit keeps the range
+   * broad, which is the point of these tests.
+   */
+  const BROAD_SWEEP_TIMEOUT_MS = 60_000;
 
   describe("toChinese", () => {
     it("converts dates whose answer is published elsewhere", () => {
@@ -69,81 +80,109 @@ describe("the lunisolar calendar", () => {
   });
 
   describe("agreement with the runtime's own Chinese calendar", () => {
-    it("disagrees only where a deciding instant sits near midnight", () => {
-      // Given every date nongli and ICU are both asked about across two
-      // centuries.
-      // When the two are compared and each disagreement's margin is read.
-      // Then every disagreement sits within ten minutes of a local midnight.
-      // This is the falsifiable prediction the whole design makes. Scattered
-      // disagreements would mean the margin measures something else.
-      for (const date of everyDayFrom("1900-01-01", 400)) {
-        const mine = toChinese(date);
-        const icu = icuChineseDate(date);
-        const agrees =
-          mine.month === icu.month &&
-          mine.isLeap === icu.isLeap &&
-          mine.day === icu.day;
+    it(
+      "disagrees only where a deciding instant sits near midnight",
+      () => {
+        // Given every date nongli and ICU are both asked about across two
+        // centuries.
+        // When the two are compared and each disagreement's margin is read.
+        // Then every disagreement sits within ten minutes of a local midnight.
+        // This is the falsifiable prediction the whole design makes. Scattered
+        // disagreements would mean the margin measures something else.
+        for (const date of everyDayFrom("1900-01-01", 400)) {
+          const mine = toChinese(date);
+          const icu = icuChineseDate(date);
+          const agrees =
+            mine.month === icu.month &&
+            mine.isLeap === icu.isLeap &&
+            mine.day === icu.day;
 
-        if (!agrees) {
-          const margin = explainChinese(date).margin.total("minutes");
-          assertTrue(
-            margin < 10,
-            `${date.toString()} disagrees at a margin of ${margin.toFixed(2)} min`,
-          );
+          if (!agrees) {
+            const margin = explainChinese(date).margin.total("minutes");
+            assertTrue(
+              margin < 10,
+              `${date.toString()} disagrees at a margin of ${margin.toFixed(2)} min`,
+            );
+          }
         }
-      }
-    });
+      },
+      BROAD_SWEEP_TIMEOUT_MS,
+    );
   });
 
   describe("structural invariants", () => {
-    it("gives every month 29 or 30 days", () => {
-      // Given every month of two centuries.
-      // When each length is measured.
-      // Then it is 29 or 30. A lunar month has no other length, so 28 or 31
-      // would mean the span machinery has lost or gained a conjunction.
-      for (let year = FIRST_YEAR; year <= LAST_YEAR; year++) {
-        for (const month of lunisolarYear(year)) {
+    it(
+      "gives every month 29 or 30 days, and every span 12 or 13 months",
+      () => {
+        // Given every solstice-to-solstice span of two centuries.
+        // When each month length and each month count is measured.
+        // Then a month is 29 or 30 days and a span holds 12 or 13 of them. Any
+        // other answer means the span machinery has lost or gained a conjunction.
+        //
+        // Iterating spans rather than years is what keeps this affordable. A
+        // lunisolar year straddles two spans, so asking for 201 years builds 402
+        // spans where 201 cover the same ground.
+        for (let year = FIRST_YEAR; year <= LAST_YEAR; year++) {
+          const span = spanFromSolsticeOf(year, CHINA_STANDARD);
           assertOneOf(
-            month.length,
-            [29, 30],
-            `month ${String(month.number)} of ${String(year)}`,
+            span.months.length,
+            [12, 13],
+            `span from ${String(year)}`,
+          );
+
+          for (const month of span.months) {
+            assertOneOf(
+              month.length,
+              [29, 30],
+              `month ${String(month.number)} of ${String(year)}`,
+            );
+          }
+        }
+      },
+      BROAD_SWEEP_TIMEOUT_MS,
+    );
+
+    it(
+      "reports a leap year exactly when the year holds thirteen months",
+      () => {
+        // Given six decades of years, which is enough to hold about twenty leap
+        // years and stay quick.
+        // When the months are counted and isLeapYear is asked.
+        // Then the two agree.
+        for (let year = 1980; year <= 2040; year++) {
+          const months = lunisolarYear(year);
+          assertOneOf(months.length, [12, 13], `year ${String(year)}`);
+          assertIdentical(
+            isLeapYear(year),
+            months.length === 13,
+            `year ${String(year)}`,
           );
         }
-      }
-    });
+      },
+      BROAD_SWEEP_TIMEOUT_MS,
+    );
 
-    it("gives every year 12 or 13 months, and 13 exactly when it leaps", () => {
-      // Given every year of two centuries.
-      // When its months are counted.
-      // Then a common year has twelve and a leap year thirteen.
-      for (let year = FIRST_YEAR; year <= LAST_YEAR; year++) {
-        const months = lunisolarYear(year);
-        assertOneOf(months.length, [12, 13], `year ${String(year)}`);
-        assertIdentical(
-          isLeapYear(year),
-          months.length === 13,
-          `year ${String(year)}`,
-        );
-      }
-    });
+    it(
+      "puts the winter solstice in month 11, every year",
+      () => {
+        // Given the 冬至 of each year, read at the China meridian.
+        // When the day containing it is converted.
+        // Then it lands in month 11. That is the definition month numbering is
+        // built from, so a failure is a failure of the implementation and never
+        // of the assertion.
+        const solstice = solarTermNamed("冬至");
+        assertNonNullable(solstice);
 
-    it("puts the winter solstice in month 11, every year", () => {
-      // Given the 冬至 of each year, read at the China meridian.
-      // When the day containing it is converted.
-      // Then it lands in month 11. That is the definition month numbering is
-      // built from, so a failure is a failure of the implementation and never
-      // of the assertion.
-      const solstice = solarTermNamed("冬至");
-      assertNonNullable(solstice);
+        for (let year = FIRST_YEAR; year <= LAST_YEAR; year++) {
+          const day = solarTermInstant(solstice, year)
+            .toZonedDateTimeISO("+08:00")
+            .toPlainDate();
 
-      for (let year = FIRST_YEAR; year <= LAST_YEAR; year++) {
-        const day = solarTermInstant(solstice, year)
-          .toZonedDateTimeISO("+08:00")
-          .toPlainDate();
-
-        assertIdentical(toChinese(day).month, 11, `冬至 ${String(year)}`);
-      }
-    });
+          assertIdentical(toChinese(day).month, 11, `冬至 ${String(year)}`);
+        }
+      },
+      BROAD_SWEEP_TIMEOUT_MS,
+    );
 
     it("numbers the months of a year consecutively from 1", () => {
       // Given the months of a leap year and of a common year.
@@ -167,32 +206,40 @@ describe("the lunisolar calendar", () => {
   });
 
   describe("round trips", () => {
-    it("returns the date it was given, for any date in the range", () => {
-      // Given Gregorian dates drawn at random from three centuries.
-      // When each is converted to the 农历 and back.
-      // Then the original date comes back. This is the cheapest broad check
-      // available, and it catches a whole class of off-by-one that the point
-      // tests above would pass through.
-      for (const date of randomDates(1850, 2150, 300)) {
-        assertIdentical(
-          fromChinese(toChinese(date)).toString(),
-          date.toString(),
-        );
-      }
-    });
+    it(
+      "returns the date it was given, for any date in the range",
+      () => {
+        // Given Gregorian dates drawn at random from three centuries.
+        // When each is converted to the 农历 and back.
+        // Then the original date comes back. This is the cheapest broad check
+        // available, and it catches a whole class of off-by-one that the point
+        // tests above would pass through.
+        for (const date of randomDates(1850, 2150, 300)) {
+          assertIdentical(
+            fromChinese(toChinese(date)).toString(),
+            date.toString(),
+          );
+        }
+      },
+      BROAD_SWEEP_TIMEOUT_MS,
+    );
 
-    it("round trips consecutive days without gap or repeat", () => {
-      // Given every day across a leap year, where month numbering shifts.
-      // When each is converted and converted back.
-      // Then every day maps to itself. Random sampling can step over a
-      // boundary that consecutive days cannot.
-      for (const date of everyDayFrom("2033-01-01", 500)) {
-        assertIdentical(
-          fromChinese(toChinese(date)).toString(),
-          date.toString(),
-        );
-      }
-    });
+    it(
+      "round trips consecutive days without gap or repeat",
+      () => {
+        // Given every day across a leap year, where month numbering shifts.
+        // When each is converted and converted back.
+        // Then every day maps to itself. Random sampling can step over a
+        // boundary that consecutive days cannot.
+        for (const date of everyDayFrom("2033-01-01", 500)) {
+          assertIdentical(
+            fromChinese(toChinese(date)).toString(),
+            date.toString(),
+          );
+        }
+      },
+      BROAD_SWEEP_TIMEOUT_MS,
+    );
   });
 
   describe("fromChinese", () => {
