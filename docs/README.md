@@ -16,15 +16,17 @@ on the site is a change that will be overwritten.
 
 ## Status
 
-Early. There is a published package, and what these pages describe is what is in
-it: the sexagenary cycle, the twenty-four solar terms, and new moons.
+Early. There is a published package, and these pages describe what is in it.
+The sexagenary cycle, the twenty-four solar terms, new moons, and the
+Gregorian ↔ 农历 conversion built on them.
 
-Pages documenting a Gregorian ↔ 农历 conversion are deliberately absent, because
-that conversion does not exist yet. It needs a meridian and the month-numbering
-rules on top of the astronomy that is here — see
-[Concepts](concepts/#how-the-calendar-is-assembled) for what remains. A
-documented function that does not exist is worse than an undocumented one that
-does.
+The conversion landed after these pages were first written, so it has a section
+in the [README](../README.md) and no page of its own here yet. A page for it,
+and one for what a margin measures, are the next two this directory owes.
+
+Only the modern rule (时宪历) is implemented. Historical calendar models and
+nongli's own ΔT are still to come, and until they land a date before 1645 is
+modern rules run backwards.
 
 ## How these pages work
 
