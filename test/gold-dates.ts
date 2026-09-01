@@ -6,6 +6,20 @@
  * nongli and then used to test nongli tests that nongli is stable, which is a
  * much weaker claim than the one these are here to make.
  *
+ * ## What these are worth, stated plainly
+ *
+ * These are dates published every year by every almanac, calendar app and
+ * newspaper in the Chinese-speaking world, and they are not in dispute. What
+ * they are **not** is a corpus traced entry by entry to a named table.
+ *
+ * The 农历 is computed and promulgated by 紫金山天文台 under GB/T 33661-2017, and
+ * the Hong Kong Observatory publishes year-by-year conversion tables. A
+ * conformance corpus drawn from one of those, with the retrieval recorded per
+ * entry, is what this file should become and what the accuracy report needs.
+ * Until then `source` says which event an entry pins rather than which document
+ * it was copied from, and the difference is worth knowing when a failure here
+ * has to be adjudicated.
+ *
  * Kept apart from the helpers in {@link ./calendar.js} because this is data and
  * those are code, and the two grow at different rates.
  */
@@ -16,6 +30,11 @@ import type { LunisolarDate } from "../src/lunisolar.js";
 export interface GoldDate {
   readonly iso: string;
   readonly expected: LunisolarDate;
+  /**
+   * What this entry pins, and how firmly it is sourced.
+   *
+   * See this module's header. None of these yet names a retrieved document.
+   */
   readonly source: string;
 }
 
@@ -23,26 +42,29 @@ export const GOLD: readonly GoldDate[] = [
   {
     iso: "2026-02-17",
     expected: { year: 2026, month: 1, isLeap: false, day: 1 },
-    source: "春节 2026, published widely",
+    source: "春节 2026. Universally published; not yet traced to a table.",
   },
   {
     iso: "2024-02-10",
     expected: { year: 2024, month: 1, isLeap: false, day: 1 },
-    source: "春节 2024",
+    source: "春节 2024. Universally published; not yet traced to a table.",
   },
   {
     iso: "2033-12-22",
     expected: { year: 2033, month: 11, isLeap: true, day: 1 },
-    source: "闰十一月 2033, the case naive implementations get wrong",
+    source:
+      "闰十一月 2033, the case naive implementations get wrong. The single " +
+      "most discussed date in this calendar, and the one most worth tracing " +
+      "to 紫金山天文台 first.",
   },
   {
     iso: "2020-01-25",
     expected: { year: 2020, month: 1, isLeap: false, day: 1 },
-    source: "春节 2020",
+    source: "春节 2020. Universally published; not yet traced to a table.",
   },
   {
     iso: "2023-03-22",
     expected: { year: 2023, month: 2, isLeap: true, day: 1 },
-    source: "闰二月 2023",
+    source: "闰二月 2023. Universally published; not yet traced to a table.",
   },
 ];

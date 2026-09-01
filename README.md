@@ -172,7 +172,7 @@ sounds like it should.
 ## Status
 
 Small, and honest about it. The modern calendar works and is measured against
-the runtime across four centuries. Still to come:
+the runtime across 1900 to 2100. Still to come:
 
 - **Historical calendar models.** Only 时宪历 is implemented, the rule in force
   since 1645. Ask for a date before then and you get modern rules run backwards,
