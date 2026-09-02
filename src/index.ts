@@ -24,6 +24,10 @@
  * every answer has a computable distance from being a different answer.
  * {@link explainChinese} reports it.
  *
+ * ΔT, the term that turns an instant into a civil date, is nongli's own rather
+ * than the ephemeris library's default. {@link deltaTFor} exposes it with the
+ * uncertainty the source paper states.
+ *
  * Requires a runtime with `Temporal`: Node 26 or later, or a browser that
  * implements it. Nongli reads the global rather than importing a polyfill, so
  * anywhere without one natively can load `temporal-polyfill` first and
@@ -51,6 +55,9 @@ export type { DatedSolarTerm } from "./solar-term-times.js";
 export { solarTermInstant, solarTermsIn } from "./solar-term-times.js";
 
 export { newMoonFrom, newMoonsBetween } from "./new-moons.js";
+
+export type { DeltaT, DeltaTBasis } from "./delta-t.js";
+export { deltaTFor } from "./delta-t.js";
 
 export type { Place } from "./place.js";
 export {

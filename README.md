@@ -78,6 +78,30 @@ Measured across 1900 to 2100, nongli and the runtime's ICU calendar disagree on
 The margin is a duration, and a duration is all it is. It never estimates a
 probability of being wrong.
 
+### Its own ΔT
+
+ΔT is the gap between the uniform time an ephemeris computes in and the Earth's
+actual rotation, which is what local midnight follows. Every conversion from an
+instant to a date runs through it. An error of E minutes puts roughly E/1440 of
+all dates on the wrong day.
+
+It is also the one term that comparing two ephemerides cannot reveal, because
+the usual candidates all inherit the same polynomials. So nongli supplies its
+own, from Stephenson, Morrison and Hohenkerk (2016), fitted to Babylonian,
+Chinese, Greek and Arab eclipse records.
+
+```ts
+import { deltaTFor } from "@kensio/nongli";
+
+deltaTFor(1600); // { seconds: 89.4, uncertainty: 3.0, basis: "fitted" }
+deltaTFor(-1000); // { seconds: 25437.3, uncertainty: 478.8, basis: "extrapolated" }
+deltaTFor(2100); // { seconds: 201.3, uncertainty: 4.5, basis: "projected" }
+```
+
+`basis` says whether a value is fitted to observations, extrapolated behind them
+or projected ahead of them. `uncertainty` comes from the ± the paper states on
+its own coefficient. That makes it a published quantity.
+
 ### One engine, one parameter, the whole family
 
 The lunisolar rules never mention China. They say "the day containing the new
@@ -169,24 +193,32 @@ Turning one into the other needs a meridian, which is why `toChinese` takes a
 [The concepts guide](docs/concepts/) explains why it matters more here than it
 sounds like it should.
 
+## Accuracy is measured, not asserted
+
+`pnpm accuracy` regenerates [ACCURACY.md](ACCURACY.md) from the code as it
+stands. Three reports:
+
+- **Conformance** against the Hong Kong Observatory, which publishes the tables
+  people actually read. **100% on all 2,192 published dates**, 2023 to 2028,
+  including three leap months, and on the sexagenary year of every one. This is
+  the only figure that says nongli is _right_. The other two say it is
+  consistent.
+- **Disagreement** with the runtime's ICU calendar over 1900 to 2100. Fifteen
+  dates out of 7,236, every one at a margin under six minutes.
+- **Fragility**: the 145 dates whose deciding instant sits within ten minutes of
+  the boundary that would move it. Nothing else publishes this.
+
 ## Status
 
-Small, and honest about it. The modern calendar works and is measured against
-the runtime across 1900 to 2100. Still to come:
+Small, and honest about it. Still to come:
 
 - **Historical calendar models.** Only 时宪历 is implemented, the rule in force
   since 1645. Ask for a date before then and you get modern rules run backwards,
   with the answer still silent about it.
-- **nongli's own ΔT.** Every instant currently carries `astronomy-engine`'s
-  default Espenak & Meeus polynomials. ΔT is what turns an instant into a civil
-  date, and it reaches 2.9 hours by 1 CE, so historical answers are worth much
-  less than modern ones until this lands.
+- **A conformance corpus with any depth.** The Observatory's open data covers
+  2023 to 2028 and no more. Nothing here supports a conformance claim before 2023. A corpus traced to 紫金山天文台 or Academia Sinica's two-thousand-year
+  converter is the next thing this repository owes you.
 - **干支 for a date**, 四柱, the hours of the day, and regnal dates.
-
-Accuracy has not been measured against 紫金山天文台 or the Hong Kong Observatory,
-only against ICU. That is a differential test, and two implementations sharing a
-mistake would agree just as well. A conformance suite against a published
-authority is the next thing this repository owes you.
 
 ## Documentation
 
