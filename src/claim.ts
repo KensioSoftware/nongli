@@ -35,6 +35,7 @@ import {
   smallestMargin,
   solarTermEvent,
 } from "./evidence.js";
+import { monthBoundaries } from "./margins.js";
 import {
   monthContaining,
   monthsOfYear,
@@ -91,7 +92,17 @@ export function explainChinese(
       ? [newMoonEvent("month end", month.endInstant, place)]
       : [];
 
-  const solstice = solarTermEvent("solstice", "冬至", span.solstice, place);
+  // Month 11 is the month *containing* 冬至, so the solstice is measured
+  // against the month boundaries it would have to cross, not against the
+  // nearest midnight. A solstice one minute after midnight in mid-month has
+  // decided nothing marginally.
+  const boundaries = monthBoundaries(span);
+  const solstice = solarTermEvent(
+    "solstice",
+    "冬至",
+    span.solstice,
+    boundaries,
+  );
 
   // Leap placement renumbers every month after it, so it decides the month and
   // the year of any date that follows it. A common year has no placement to be
@@ -100,9 +111,17 @@ export function explainChinese(
     ? majorTermsIn(span)
     : [];
 
+  // The conjunction opening month 1 decides which lunisolar year a date falls
+  // in, and it can only change the answer for a date sitting on that boundary.
+  // Carrying it for every date in the year reported one date in ten as
+  // fragile, which is a signal nobody can act on.
   const firstMonth = monthsOfYear(value.year, place).at(0);
+  const onYearBoundary =
+    firstMonth !== undefined &&
+    Math.abs(date.since(firstMonth.start).days) <= 1;
+
   const yearStart: DecidingEvent[] =
-    firstMonth === undefined
+    firstMonth === undefined || !onYearBoundary
       ? []
       : [newMoonEvent("year start", firstMonth.startInstant, place)];
 

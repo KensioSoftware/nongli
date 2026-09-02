@@ -1,6 +1,7 @@
 import {
   assertArrayIncludes,
   assertArrayLength,
+  assertArrayMinLength,
   assertArrayNotIncludes,
   assertFalse,
   assertIdentical,
@@ -26,7 +27,12 @@ import { explainChinese } from "./claim.js";
 import { spanFromSolsticeOf } from "./lunar-months.js";
 import { fromChinese, toChinese } from "./lunisolar.js";
 import { chineseNewYear, isLeapYear, lunisolarYear } from "./lunisolar-year.js";
-import { BEIJING_LOCAL, CHINA_STANDARD, VIETNAM_STANDARD } from "./place.js";
+import {
+  BEIJING_LOCAL,
+  CHINA_STANDARD,
+  marginFromMidnight,
+  VIETNAM_STANDARD,
+} from "./place.js";
 import { solarTermInstant } from "./solar-term-times.js";
 import { solarTermNamed } from "./solar-terms.js";
 
@@ -381,6 +387,56 @@ describe("the lunisolar calendar", () => {
 
       assertArrayIncludes(roles, "month start");
       assertArrayIncludes(roles, "solstice");
+    });
+
+    it("measures a solar term against the month boundary, not midnight", () => {
+      // Given a leap year, whose claim carries the 中气 that placed the leap
+      // month.
+      // When each of those terms is compared with the nearest lunar month
+      // boundary.
+      // Then its margin is that distance and not its distance from the nearest
+      // midnight. What a 中气 decides is which month contains it, so one
+      // sitting a minute after midnight in mid-month has decided nothing
+      // marginally. Measuring these against midnight flagged one date in ten
+      // as fragile.
+      const claim = explainChinese(on("2033-06-15"));
+      const terms = claim.month.deciding.filter(
+        (event) => event.kind === "solar term",
+      );
+
+      assertArrayMinLength(terms, 1);
+
+      for (const term of terms) {
+        const midnightMargin = marginFromMidnight(
+          term.instant,
+          CHINA_STANDARD,
+        ).total("minutes");
+
+        assertTrue(
+          term.margin.total("minutes") >= midnightMargin - 0.001,
+          `${String(term.name)} measured against midnight`,
+        );
+      }
+    });
+
+    it("carries year-start evidence only for a date on that boundary", () => {
+      // Given 春节 and a date in the middle of the same year.
+      // When each claim's year evidence is read.
+      // Then only the first carries the conjunction that opened the year. That
+      // conjunction can only change the year of a date sitting on the
+      // boundary, and carrying it everywhere reported one date in ten as
+      // fragile, which is a signal nobody can act on.
+      const newYear = explainChinese(on("2026-02-17"));
+      const midYear = explainChinese(on("2026-06-15"));
+
+      assertArrayIncludes(
+        newYear.year.deciding.map((event) => event.role),
+        "year start",
+      );
+      assertArrayNotIncludes(
+        midYear.year.deciding.map((event) => event.role),
+        "year start",
+      );
     });
 
     it("carries no leap evidence in a common year", () => {

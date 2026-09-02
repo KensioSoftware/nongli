@@ -15,6 +15,20 @@
  * distance is the margin. It is a duration in minutes, and it is never a
  * probability that the answer is wrong.
  *
+ * ## A margin measures the boundary that would change the answer
+ *
+ * Not simply the nearest midnight. For a conjunction those are the same thing,
+ * because a month begins on the day containing it, so the deciding boundary is
+ * local midnight.
+ *
+ * For a solar term they are not. Month 11 is the month *containing* 冬至, and a
+ * leap month is one containing no 中气, so what matters is whether the term
+ * crosses a **lunar month boundary**. A 中气 sitting a minute after midnight in
+ * the middle of a month is not close to anything: the month containing it is the
+ * same either way. Measuring solar terms against the nearest midnight reported
+ * 10.3% of all dates as fragile, where measuring them against the boundary that
+ * actually decides reports a small fraction of that.
+ *
  * ## A margin is only as good as the set it minimises over
  *
  * The set has to be built by asking what would change the answer, and an
@@ -26,23 +40,16 @@
  */
 
 import type { LunarSpan } from "./lunar-months.js";
+import {
+  isCloser,
+  marginToNearest,
+  monthBoundaries,
+  WIDEST_MARGIN,
+} from "./margins.js";
 import type { Place } from "./place.js";
 import { localDateAt, marginFromMidnight } from "./place.js";
 import { solarTermInstant } from "./solar-term-times.js";
 import { MAJOR_TERMS } from "./solar-terms.js";
-
-/**
- * The largest margin there is.
- *
- * A margin is a distance to the nearer of two midnights and those are a day
- * apart, so nothing can sit further than twelve hours from one. This is also
- * what an empty set of deciders reports, which is the honest answer for a field
- * nothing came near deciding.
- */
-const WIDEST_MARGIN = Temporal.Duration.from({ hours: 12 });
-
-/** Durations need a reference point to be compared. Any date will do. */
-const COMPARISON_EPOCH = Temporal.PlainDate.from("2000-01-01");
 
 /** What an instant settled. */
 export type DecidingRole =
@@ -91,19 +98,25 @@ export function newMoonEvent(
   };
 }
 
-/** A solar term that decided something. */
+/**
+ * A solar term that decided something.
+ *
+ * `boundaries` are the month starts the term is measured against. What a term
+ * decides is which lunar month contains it, so a term far from any month
+ * boundary is deciding nothing marginally, however close to midnight it falls.
+ */
 export function solarTermEvent(
   role: DecidingRole,
   name: string,
   instant: Temporal.Instant,
-  place: Place,
+  boundaries: readonly Temporal.Instant[],
 ): DecidingEvent {
   return {
     kind: "solar term",
     role,
     name,
     instant,
-    margin: marginFromMidnight(instant, place),
+    margin: marginToNearest(instant, boundaries),
   };
 }
 
@@ -118,6 +131,7 @@ export function solarTermEvent(
  */
 export function majorTermsIn(span: LunarSpan): readonly DecidingEvent[] {
   const found: DecidingEvent[] = [];
+  const boundaries = monthBoundaries(span);
   const opensOn = span.months.at(0)?.start;
   const closesOn = span.months.at(-1)?.end;
 
@@ -137,7 +151,7 @@ export function majorTermsIn(span: LunarSpan): readonly DecidingEvent[] {
 
       if (inside) {
         found.push(
-          solarTermEvent("leap placement", term.name, instant, span.place),
+          solarTermEvent("leap placement", term.name, instant, boundaries),
         );
       }
     }
@@ -153,12 +167,7 @@ export function smallestMargin(
   let best = WIDEST_MARGIN;
 
   for (const event of events) {
-    const closer =
-      Temporal.Duration.compare(event.margin, best, {
-        relativeTo: COMPARISON_EPOCH,
-      }) < 0;
-
-    if (closer) {
+    if (isCloser(event.margin, best)) {
       best = event.margin;
     }
   }

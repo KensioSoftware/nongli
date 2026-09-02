@@ -36,5 +36,8 @@
     "sourceMap": true,
     "removeComments": false
   },
-  "include": ["src/**/*", "test/**/*"]
+  // `scripts` is here so the generators are typechecked and so oxlint's
+  // type-aware rules can resolve them. Emit is scoped to `src` by
+  // `tsconfig.build.json`, so nothing under `scripts` or `test` ships.
+  "include": ["src/**/*", "test/**/*", "scripts/**/*.ts"]
 }
