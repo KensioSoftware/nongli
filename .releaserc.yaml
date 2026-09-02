@@ -11,23 +11,20 @@ branches:
 plugins:
   # Reads the commit subjects on main and works out the bump.
   #
-  # Anything that ships is a patch. A minor is not something a commit subject
-  # can ask for: it is the checkbox on the workflow, below. The reasoning is
-  # that "is this significant enough to be a minor" is a judgement about the
-  # release as a whole, made once, by a person looking at the whole batch —
-  # not a judgement each commit subject should be trusted to make. Reserving
-  # it that way is also what keeps the minor number meaning something.
+  # Anything that ships is a patch. Neither a minor nor a major is something a
+  # commit subject can ask for: both are the dropdown on the workflow, below.
+  # The reasoning is that "how big is this release" is a judgement about the
+  # batch as a whole, made once, by a person looking at all of it — not a
+  # judgement each commit subject should be trusted to make. Reserving it that
+  # way is what keeps the minor and major numbers meaning something.
   #
-  # So the ladder is: patch automatically, minor by checkbox, major published
-  # by hand from a working copy and never from this workflow at all.
+  # So the ladder is: patch automatically, minor and major by choosing them.
   #
-  # That ladder is also what keeps this package on 0.x, which is where it stays
-  # until there is enough library here to be worth promising stability about.
-  # From 0.1.0 a patch gives 0.1.1 and the checkbox gives 0.2.0; neither leaves
-  # the 0.x line, and the one bump that would is the major this file refuses
-  # further down. The 0.x line has to be anchored by a v0.1.0 tag before the
-  # first run, though, or semantic-release starts from 1.0.0 — see the note on
-  # `workflow_dispatch` in .github/workflows/release.yml.
+  # Leaving 0.x is therefore the dropdown set to major and nothing else. A
+  # patch and a minor both stay on the line. The line has to be anchored by a
+  # v0.1.0 tag before the first run, though, or semantic-release starts from
+  # 1.0.0 — see the note on `workflow_dispatch` in
+  # .github/workflows/release.yml.
   #
   # The breaking rule has to come first and has to be here. Without it the
   # feat rule below matches "feat!: …" too, and a breaking change would go out
@@ -120,26 +117,31 @@ plugins:
   # Two commands, and between them what this repository does differently from a
   # stock semantic-release setup.
   #
-  # analyzeCommitsCmd raises the release to a minor when the workflow was
-  # started with its checkbox ticked. semantic-release takes the highest
-  # result across every analyzer, so this can only ever raise a patch to a
-  # minor — it cannot lower anything, and it leaves a major alone. Printing
-  # nothing, which is what happens when the box is unticked, is read as "no
-  # opinion" rather than "no release".
+  # analyzeCommitsCmd raises the release to whatever the workflow's dropdown
+  # was set to. semantic-release takes the highest result across every
+  # analyzer, so this can only ever raise — it cannot lower anything. Printing
+  # nothing, which is what `patch` does, is read as "no opinion" rather than
+  # "no release", and leaves the commit subjects to decide.
   #
-  # verifyReleaseCmd refuses a major, after the version is worked out and
-  # before anything is published, because a breaking change is a decision about
-  # what consumers have to rewrite, made by a person publishing by hand rather
-  # than by a marker in a subject line. Mapping them down to a minor was
-  # rejected, since it would put a false version number against a genuinely
-  # breaking change.
+  # verifyReleaseCmd refuses a major that nobody chose. A breaking change is a
+  # decision about what consumers have to rewrite, and the point has always
+  # been that a marker in a commit subject must not be able to make it on its
+  # own. So the guard now compares the two: a major is fine when the dropdown
+  # says major, and refused when a `feat!:` or a BREAKING CHANGE footer reached
+  # one by itself.
   #
-  # While this package is on 0.x that guard is doing a second job: the only way
-  # off the 0.x line is a major, so this is what stops 1.0.0 being published by
-  # a run of a workflow rather than by a decision that the API is settled. Note
-  # what that costs in the meantime — a genuinely breaking change cannot be
-  # released from here at all, and pre-1.0 those are expected. The way through
-  # is the same hand publish, not a `feat!:` and a retry.
+  # That is the same rule as before, stated against the thing it was actually
+  # about. It used to refuse every major and say majors are published by hand,
+  # which made leaving 0.x impossible without going around this file. Mapping a
+  # major down to a minor was rejected then and still is, since it would put a
+  # false version number against a genuinely breaking change.
+  #
+  # An earlier version of this guard refused every major, which cost more than
+  # it was worth. A genuinely breaking change could not be released from here
+  # at all, and pre-1.0 those are expected; leaving 0.x needed a publish from a
+  # working copy, which would have meant the second version in this package's
+  # life with no provenance attestation. Comparing against the dropdown keeps
+  # the rule and drops both costs.
   #
   # The second guard covers the one route to 1.0.0 that the first cannot see.
   # With no tag to count from, semantic-release does not bump anything:
@@ -153,11 +155,13 @@ plugins:
   #
   - - "@semantic-release/exec"
     - analyzeCommitsCmd: >-
-        if [ "$RELEASE_MINOR" = "true" ]; then echo minor; fi
+        case "$RELEASE_TYPE" in minor|major) echo "$RELEASE_TYPE" ;; esac
       verifyReleaseCmd: >-
-        if [ "${nextRelease.type}" = "major" ]; then
-        echo "Refusing to publish ${nextRelease.version} automatically:
-        major releases are published by hand." >&2;
+        if [ "${nextRelease.type}" = "major" ] && [ "$RELEASE_TYPE" != "major" ];
+        then
+        echo "Refusing to publish ${nextRelease.version}: a major reached by a
+        marker in a commit subject rather than by someone choosing it. Run the
+        release workflow again and pick major." >&2;
         exit 1;
         fi;
         if [ -z "${lastRelease.version}" ]; then
