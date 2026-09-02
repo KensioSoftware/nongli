@@ -78,6 +78,35 @@ Measured across 1900 to 2100, nongli and the runtime's ICU calendar disagree on
 The margin is a duration, and a duration is all it is. It never estimates a
 probability of being wrong.
 
+### Whether anyone published the answer
+
+A margin says how close a date came to being a different date. It says nothing
+about whether the date means anything, and the two fail independently.
+
+```ts
+import { explainChinese } from "@kensio/nongli";
+
+const ancient = explainChinese(Temporal.PlainDate.from("1500-06-15"));
+ancient.margin.total("minutes"); // 472 — nowhere near a boundary
+ancient.basis; // { kind: "computed", source: undefined }
+```
+
+That date is as arithmetically safe as a date gets, and the answer is still
+worth very little. 时宪历 was not adopted until 1645. This is a modern rule run
+backwards through 145 years that used a different one.
+
+Three states:
+
+| `basis.kind` | meaning                                                                         |
+| ------------ | ------------------------------------------------------------------------------- |
+| `published`  | nongli holds a published source covering this date, and names it                |
+| `in-force`   | the calendar was in actual use, but nongli holds no source                      |
+| `computed`   | rules run back before the model was adopted, or forward past anything published |
+
+`computed` covers both directions on purpose. The 农历 is _promulgated_. A date
+in 2200 is un-attested in exactly the way one in 200 CE is, and nobody has
+published either.
+
 ### Its own ΔT
 
 ΔT is the gap between the uniform time an ephemeris computes in and the Earth's
@@ -213,8 +242,8 @@ stands. Three reports:
 Small, and honest about it. Still to come:
 
 - **Historical calendar models.** Only 时宪历 is implemented, the rule in force
-  since 1645. Ask for a date before then and you get modern rules run backwards,
-  with the answer still silent about it.
+  since 1645. A date before then is modern rules run backwards, and `basis`
+  now says so, but the calendars actually in use at the time are still absent.
 - **A conformance corpus with any depth.** The Observatory's open data covers
   2023 to 2028 and no more. Nothing here supports a conformance claim before 2023. A corpus traced to 紫金山天文台 or Academia Sinica's two-thousand-year
   converter is the next thing this repository owes you.

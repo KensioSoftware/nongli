@@ -51,16 +51,10 @@ import {
   spanContaining,
 } from "./lunar-lookup.js";
 import type { Place } from "./place.js";
+import type { ModelId } from "./models.js";
 import { CHINA_STANDARD } from "./place.js";
 
-/**
- * Which rules produced an answer.
- *
- * Only 时宪历 is implemented, the rule in force since 1645 and the one the
- * modern 农历 still follows. The type is a union of one so that adding 授时历 or
- * 太初历 later is an addition and not a change.
- */
-export type ModelId = "shixian";
+export type { ModelId } from "./models.js";
 
 /**
  * A date in the lunisolar calendar.

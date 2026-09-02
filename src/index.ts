@@ -72,9 +72,11 @@ export type {
   LunarMonth,
   LunisolarDate,
   LunisolarDateLike,
-  ModelId,
   Options,
 } from "./lunisolar.js";
+
+export type { Basis, BasisClaim, CalendarModel, ModelId } from "./models.js";
+export { basisFor, modelFor, SHIXIAN } from "./models.js";
 export { fromChinese, toChinese } from "./lunisolar.js";
 export { chineseNewYear, isLeapYear, lunisolarYear } from "./lunisolar-year.js";
 
