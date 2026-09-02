@@ -13,17 +13,30 @@
  * to decide whether a missing answer is an error. Everything shaped like a
  * calendar lives elsewhere.
  *
- * ## The one thing this module will grow
+ * ## nongli owns its ΔT
  *
- * **Its own ΔT.** `astronomy-engine` defaults to the Espenak & Meeus
- * polynomials and exposes `SetDeltaTFunction` to replace them. nongli intends
- * to supply Stephenson, Morrison & Hohenkerk (2016) instead, because ΔT is what
- * converts an instant into a civil date and is therefore the single term that
- * every cross-check between ephemerides is blind to. That substitution belongs
- * here, and until it happens every instant below carries the library default.
+ * `astronomy-engine` defaults to the Espenak and Meeus polynomials and exposes
+ * `SetDeltaTFunction` to replace them. nongli supplies Stephenson, Morrison and
+ * Hohenkerk (2016) instead, installed here at module load so that every instant
+ * this module returns already carries it.
+ *
+ * ΔT is what converts an astronomical instant into a civil date, and it is the
+ * one term a cross-check between ephemerides cannot see, because the usual
+ * candidates all inherit the same Espenak and Meeus polynomials. Owning it is
+ * the difference between historical dates that mean something and historical
+ * dates that look confident. See {@link ./delta-t.js}.
+ *
+ * The installation is a module side effect, which is the one place this package
+ * has any. `astronomy-engine` keeps the function in module state and offers no
+ * other way in, and every entry point here imports this module, so there is no
+ * order in which a caller can get an instant computed on the old default.
  */
 
 import * as astronomy from "astronomy-engine";
+
+import { deltaTSecondsFromEpochDays } from "./delta-t.js";
+
+astronomy.SetDeltaTFunction(deltaTSecondsFromEpochDays);
 
 const toDate = (instant: Temporal.Instant): Date =>
   new Date(instant.epochMilliseconds);
