@@ -27,7 +27,18 @@
  * force and was published at the time; nongli simply has no copy.
  */
 
-/** Which rules produced an answer. */
+/**
+ * Which rules produced an answer.
+ *
+ * **This union is open and will gain members.** 授时历 and 太初历 are the
+ * obvious next two, and every calendar in use before 1645 is a candidate after
+ * that. The same goes for {@link Basis}, `DecidingRole` and `YearBoundary`:
+ * they name things the world has more of than nongli has implemented.
+ *
+ * Worth knowing if you `switch` over one exhaustively, because a new member
+ * makes that stop compiling. Treat them as sets that grow rather than as
+ * closed enumerations, and give the switch a default.
+ */
 export type ModelId = "shixian";
 
 /**
