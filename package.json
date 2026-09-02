@@ -1,6 +1,6 @@
 {
   "name": "@kensio/nongli",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Chinese calendrical and historical chronology utilities for JavaScript and Temporal",
   "repository": "https://github.com/KensioSoftware/nongli",
   "homepage": "https://nongli.dev",
