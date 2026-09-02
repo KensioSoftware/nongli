@@ -39,7 +39,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "pack:check": "./scripts/sh/pack-check.sh",
-    "accuracy": "vitest run --config vitest.accuracy.config.ts",
+    "accuracy": "vitest run --config vitest.accuracy.config.ts && oxfmt ACCURACY.md",
     "check": "pnpm fmt && pnpm docs:check && pnpm fta && pnpm build:check && pnpm pack:check && pnpm test:coverage"
   },
   "devDependencies": {

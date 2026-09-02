@@ -43,6 +43,8 @@ import {
 } from "./lunar-lookup.js";
 import type { LunisolarDate, ModelId, Options } from "./lunisolar.js";
 import { dateIn, placeOf } from "./lunisolar.js";
+import type { BasisClaim } from "./models.js";
+import { basisFor } from "./models.js";
 import type { Place } from "./place.js";
 
 /** A converted date, and everything that decided it. */
@@ -53,6 +55,15 @@ export interface ChineseClaim {
   readonly value: LunisolarDate;
   readonly place: Place;
   readonly model: ModelId;
+  /**
+   * Whether anyone published this date, and who.
+   *
+   * A margin says how close the answer came to being a different one. This says
+   * whether the answer means anything, and the two fail independently. A date
+   * in 2200 can sit twelve hours from every boundary and still be something
+   * nobody has promulgated. See {@link ./models.js}.
+   */
+  readonly basis: BasisClaim;
   readonly day: Evidence;
   readonly month: Evidence;
   readonly year: Evidence;
@@ -80,6 +91,7 @@ export function explainChinese(
   const span = spanContaining(date, place);
   const month = monthContaining(span, date);
 
+  const model = options?.model ?? "shixian";
   const value = dateIn(month, date);
   const opening = newMoonEvent("month start", month.startInstant, place);
 
@@ -133,7 +145,8 @@ export function explainChinese(
     of: date,
     value,
     place,
-    model: options?.model ?? "shixian",
+    model,
+    basis: basisFor(value.year, model),
     day,
     month: inMonth,
     year,

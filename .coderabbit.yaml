@@ -4,8 +4,38 @@
 # this repository only.
 reviews:
   auto_review:
-    # Review a pull request once, when it is opened.
-    enabled: true
+    # Reviews are opt in, and the opt in is a label.
+    #
+    # CodeRabbit has no setting for the size of a pull request, so the rule
+    # "skip anything under 500 changed lines" cannot be expressed here at all.
+    # What it does have is this: a positive entry in `labels` triggers a review
+    # even while `enabled` is false. So the decision moves to
+    # .github/workflows/coderabbit.yml, which applies the label to pull requests
+    # worth a review, and this file says what to do about it.
+    #
+    # The alternative was to leave automatic reviews on and have the workflow
+    # label the ones to *skip*. That races: CodeRabbit starts on the opened
+    # event and so does the workflow, and a lost race means a small pull request
+    # is reviewed anyway. Opting in cannot race, because nothing happens until
+    # the label lands.
+    enabled: false
+    labels:
+      - coderabbit
+
     # Do not review again on every push after that. Ask for another review with
     # an `@coderabbitai review` comment on the pull request.
     auto_incremental_review: false
+
+    # The title rule, stated natively as well as in the workflow.
+    #
+    # The workflow is what enforces it, since nothing is reviewed without the
+    # label it applies. This is here because it is the direct expression of the
+    # rule, and because it keeps working if `enabled` is ever set back to true.
+    #
+    # Matching is a case-insensitive substring, not a prefix, so both the bare
+    # and the scoped conventional commit forms need listing. It also means a
+    # title that mentions "docs:" in passing would be skipped, which is worth
+    # knowing and has not been worth guarding against.
+    ignore_title_keywords:
+      - "docs:"
+      - "docs("

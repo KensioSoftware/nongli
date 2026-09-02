@@ -1,0 +1,103 @@
+---
+name: CodeRabbit
+
+# Decides which pull requests are worth a CodeRabbit review, and says so by
+# applying a label.
+#
+# .coderabbit.yaml has `auto_review.enabled: false` with `coderabbit` as a
+# positive entry in `labels`, and a positive label match triggers a review even
+# while automatic review is off. So nothing is reviewed until this workflow
+# labels it, and the two rules below are the whole policy.
+#
+# Skipped:
+#
+#   * anything whose title is a `docs:` change, scoped or not
+#   * anything under 500 changed lines
+#
+# The reason for both is the same. Reviews are rationed (the account allows one
+# an hour), and spending one on a typo fix means not having it for the pull
+# request that moves the calendar.
+#
+# ## Why label rather than comment
+#
+# The other way to trigger a review is an `@coderabbitai review` comment, which
+# this workflow could post. That depends on CodeRabbit acting on a comment from
+# `github-actions[bot]`, which is not documented either way. If it does not, no
+# pull request is ever reviewed and nothing says so. Labelling fails the other
+# way: if the label is wrong, the worst case is a review that was not needed.
+
+on:
+  pull_request:
+    branches:
+      - main
+    # Deliberately not `synchronize`. The repository already reviews once, when
+    # a pull request opens, and `auto_incremental_review` is false for the same
+    # reason. Re-labelling on every push would hand CodeRabbit a fresh trigger
+    # each time a branch grew past the threshold, which is the behaviour that
+    # setting exists to prevent.
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  # `issues: write` creates the label the first time; `pull-requests: write`
+  # puts it on the pull request.
+  issues: write
+  pull-requests: write
+
+env:
+  # Changed lines, added and removed together, below which a pull request is
+  # not worth a review.
+  MINIMUM_LINES: 500
+  LABEL: coderabbit
+
+jobs:
+  triage:
+    name: Triage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether this pull request wants a review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          # These come from the event payload rather than a second API call,
+          # so the numbers are the ones GitHub had when it fired the event.
+          ADDITIONS: ${{ github.event.pull_request.additions }}
+          DELETIONS: ${{ github.event.pull_request.deletions }}
+        run: |
+          set -euo pipefail
+
+          changed=$(( ADDITIONS + DELETIONS ))
+          echo "Title:         ${TITLE}"
+          echo "Changed lines: ${changed} (+${ADDITIONS} -${DELETIONS})"
+
+          # Conventional commit types are lower case and come first, so anchor
+          # the match rather than looking anywhere in the title. That avoids
+          # skipping "feat: stop the docs: prefix being special cased".
+          if [[ "${TITLE}" =~ ^docs(\(.*\))?!?: ]]; then
+            echo "Skipping: a docs change."
+            exit 0
+          fi
+
+          if (( changed < MINIMUM_LINES )); then
+            echo "Skipping: under ${MINIMUM_LINES} changed lines."
+            exit 0
+          fi
+
+          # Created on first use so the workflow does not depend on someone
+          # having made the label by hand. Already existing is not a failure.
+          gh label create "${LABEL}" \
+            --repo "${REPO}" \
+            --description "Large enough and substantive enough for a CodeRabbit review" \
+            --color "8B5CF6" \
+            || echo "Label already exists."
+
+          gh pr edit "${NUMBER}" --repo "${REPO}" --add-label "${LABEL}"
+          echo "Labelled for review."
