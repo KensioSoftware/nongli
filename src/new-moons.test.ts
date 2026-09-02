@@ -1,4 +1,5 @@
 import {
+  assertArrayEmpty,
   assertArrayLength,
   assertIdentical,
   assertInstanceOf,
@@ -197,9 +198,8 @@ describe("new moons", () => {
       // lets consecutive spans tile.
       for (const era of ERAS) {
         for (const moon of moonsFrom(era, 15)) {
-          assertArrayLength(
+          assertArrayEmpty(
             newMoonsBetween(moon.subtract({ hours: 24 }), moon),
-            0,
             `${moon.toString()} should be excluded as an exclusive end`,
           );
         }
@@ -231,10 +231,9 @@ describe("new moons", () => {
       // Then both come back empty. A reversed span has an obvious empty answer,
       // so it needs no error.
       const instant = at("2026-06-01T00:00:00Z");
-      assertArrayLength(newMoonsBetween(instant, instant), 0);
-      assertArrayLength(
+      assertArrayEmpty(newMoonsBetween(instant, instant));
+      assertArrayEmpty(
         newMoonsBetween(instant, instant.subtract({ hours: 24 * 60 })),
-        0,
       );
     });
 
