@@ -32,7 +32,9 @@
  *
  * It is deliberately outside `vitest.config.ts`'s `include`, so `pnpm test`
  * never runs it and never writes a file as a side effect of running the suite.
- * `pnpm accuracy` names it explicitly.
+ * `pnpm accuracy` names it explicitly, and then runs `oxfmt` over the result so
+ * the formatter owns the layout of the markdown rather than this file having to
+ * know how it aligns a table.
  */
 
 import { writeFileSync } from "node:fs";
