@@ -127,6 +127,13 @@ on:
           what everything releasable defaults to.
         type: boolean
         default: false
+      exact_version:
+        description: >-
+          Publish this exact version instead of one worked out from the
+          commits, e.g. 1.0.0. For the majors semantic-release refuses.
+          Leave empty for the ordinary path.
+        type: string
+        default: ""
 
 defaults:
   run:
@@ -260,7 +267,7 @@ jobs:
     # nothing was published. The version job below reads it to decide whether
     # there is anything to write down.
     outputs:
-      version: ${{ steps.release.outputs.version }}
+      version: ${{ steps.release.outputs.version || steps.exact.outputs.version }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -287,12 +294,81 @@ jobs:
       # GitHub Release with those notes as its body. Does nothing at all if
       # those commits are only chore/test/docs. See .releaserc.yaml.
       - id: release
+        if: inputs.exact_version == ''
         run: pnpm exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Read by analyzeCommitsCmd in .releaserc.yaml, which raises the
           # release to a minor when this is "true".
           RELEASE_MINOR: ${{ inputs.minor }}
+
+      # The hand-cut path, for a version semantic-release will not produce.
+      #
+      # It exists for one case: leaving 0.x. semantic-release works the version
+      # out from the commit subjects and reaches a major only through a
+      # breaking-change marker. 1.0.0 here says the API is worth relying on,
+      # which is not a consequence of anything breaking, so no honest commit
+      # subject produces it. The version is typed in instead.
+      #
+      # .releaserc.yaml still refuses majors and is untouched. This path does
+      # not go through semantic-release at all.
+      #
+      # Why it lives in this file rather than its own, or in a working copy:
+      # the npm trusted publisher is scoped to this repository, this *file* and
+      # the release environment. A new file would not be covered by it. A
+      # publish from a working copy would need an npm credential this
+      # repository deliberately does not have, and would produce the second
+      # version in this package's life carrying no provenance attestation.
+      # Staying here keeps the attestation and needs no npm-side change.
+      - id: exact
+        if: inputs.exact_version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.exact_version }}
+        run: |
+          set -euo pipefail
+
+          # Typed by hand into a form field, so it is checked like anything
+          # else typed by hand. Bare semver only: no prerelease, no build
+          # metadata, no leading v.
+          if ! [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Not a bare semver version: ${VERSION}" >&2
+            exit 1
+          fi
+
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "v${VERSION} already exists." >&2
+            exit 1
+          fi
+
+          # Going backwards would move the `latest` tag on the registry, and
+          # npm does not allow a version to be published twice.
+          latest=$(git tag --sort=-v:refname | head -1 | sed 's/^v//')
+          highest=$(printf '%s\n%s\n' "${latest}" "${VERSION}" | sort -V | tail -1)
+          if [ "${latest}" = "${VERSION}" ] || [ "${highest}" != "${VERSION}" ]; then
+            echo "${VERSION} is not ahead of the latest tag ${latest}." >&2
+            exit 1
+          fi
+
+          # Not committed here. The tag and the registry are what a release
+          # is, and the version job below sends package.json to main as a pull
+          # request exactly as it does for the ordinary path.
+          npm version "${VERSION}" --no-git-tag-version
+
+          # prepack builds the tarball, and the three jobs above have already
+          # proved this commit lints, tests and packs. Provenance comes from
+          # the OIDC token `id-token: write` mints against the trusted
+          # publisher this environment is scoped to.
+          npm publish --provenance --access public
+
+          git tag -a "v${VERSION}" -m "v${VERSION}"
+          git push \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "v${VERSION}"
+
+          gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
   # `version` in package.json, caught up to what was just published, and sent
   # to main as a pull request.
