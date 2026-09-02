@@ -1,9 +1,14 @@
-import { assertIdentical, assertTrue } from "@kensio/smartass";
+import {
+  assertIdentical,
+  assertNumberBetween,
+  assertTrue,
+} from "@kensio/smartass";
 import { describe, it } from "vitest";
 
 import { on, randomDates } from "#test/calendar.js";
 
 import { BEIJING_LOCAL, VIETNAM_STANDARD } from "./place.js";
+import { CYCLE_LENGTH } from "./sexagenary.js";
 import { sexagenaryYearOf, zodiacOf } from "./sexagenary-dates.js";
 
 describe("the sexagenary year of a date", () => {
@@ -43,11 +48,13 @@ describe("the sexagenary year of a date", () => {
     // Then the index is a real position in the cycle. A single modulo would
     // give a negative here, and the cycle has no negative positions.
     for (const date of randomDates(1700, 1900, 40)) {
-      const index = sexagenaryYearOf(date).index;
+      const { index } = sexagenaryYearOf(date);
+
       assertTrue(
-        Number.isInteger(index) && index >= 0 && index < 60,
+        Number.isInteger(index),
         `${date.toString()} gave ${String(index)}`,
       );
+      assertNumberBetween(index, 0, CYCLE_LENGTH - 1, date.toString());
     }
   });
 
