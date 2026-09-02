@@ -195,8 +195,7 @@ newMoonsBetween(
 ### The sexagenary cycle (干支)
 
 Ten Heavenly Stems and twelve Earthly Branches turning together, meeting again
-after sixty. Pure arithmetic — this makes no claim about which term falls on a
-given date.
+after sixty.
 
 ```ts
 import { sexagenary, sexagenaryOf } from "@kensio/nongli";
@@ -206,6 +205,37 @@ sexagenary(-1); // { index: 59, stem: "癸", branch: "亥" } — it wraps
 sexagenaryOf("甲", "寅")?.index; // 50 — the rings turn at different rates
 sexagenaryOf("甲", "丑"); // undefined — that pairing never occurs
 ```
+
+Ask a date for its year and its animal:
+
+```ts
+import { sexagenaryYearOf, zodiacOf } from "@kensio/nongli";
+
+const date = Temporal.PlainDate.from("2026-06-15");
+sexagenaryYearOf(date); // { index: 42, stem: "丙", branch: "午" }
+zodiacOf(date).name; // "马"
+zodiacOf(date).english; // "horse"
+```
+
+### Where the 干支 year turns, and why you get a say
+
+Two traditions put the boundary in different places and both are in use. The
+calendar turns the year at 正月初一, the lunisolar New Year. 四柱 and the
+practices built on it turn it at 立春, the solar term at 315°.
+
+They disagree for the days in between, which can be a fortnight apart:
+
+```ts
+// 2024: 立春 fell on 4 February, New Year on the 10th.
+const between = Temporal.PlainDate.from("2024-02-06");
+
+zodiacOf(between).english; // "rabbit" — the calendar's answer
+zodiacOf(between, { boundary: "lichun" }).english; // "dragon"
+```
+
+Neither is a mistake, and someone born on that day has two defensible animals.
+The default is the calendar's, because that is what this library converts and
+what the Observatory prints. Anyone wanting the other has to say so.
 
 ## Why the astronomy returns instants
 
@@ -247,7 +277,11 @@ Small, and honest about it. Still to come:
 - **A conformance corpus with any depth.** The Observatory's open data covers
   2023 to 2028 and no more. Nothing here supports a conformance claim before 2023. A corpus traced to 紫金山天文台 or Academia Sinica's two-thousand-year
   converter is the next thing this repository owes you.
-- **干支 for a date**, 四柱, the hours of the day, and regnal dates.
+- **四柱**, the hours of the day (时辰, 刻, the night watches), and regnal dates.
+- **The 干支 of a _day_**. The year is here. The day is a continuous count with
+  a contested boundary at 子时, and nongli holds no authority to check an epoch
+  for it against. Guessing one would be the sort of unmeasured claim the rest of
+  this README exists to avoid.
 
 ## Documentation
 

@@ -35,6 +35,10 @@
  */
 
 export type { Branch, Sexagenary, Stem } from "./sexagenary.js";
+export type { SexagenaryOptions, YearBoundary } from "./sexagenary-dates.js";
+export { sexagenaryYearOf, zodiacOf } from "./sexagenary-dates.js";
+export type { ZodiacAnimal } from "./zodiac.js";
+export { ZODIAC, zodiacFor, zodiacNamed } from "./zodiac.js";
 export {
   BRANCHES,
   CYCLE_LENGTH,
