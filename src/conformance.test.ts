@@ -7,8 +7,8 @@ import { describe, it } from "vitest";
 
 import corpus from "#test/hko-corpus.json" with { type: "json" };
 
-import { sexagenary } from "./sexagenary.js";
 import { toChinese } from "./lunisolar.js";
+import { sexagenaryYearOf, zodiacOf } from "./sexagenary-dates.js";
 
 /**
  * Conformance against the Hong Kong Observatory.
@@ -39,10 +39,6 @@ describe("conformance with the Hong Kong Observatory", () => {
    * locally and not on a loaded CI runner under coverage instrumentation.
    */
   const CORPUS_SWEEP_TIMEOUT_MS = 60_000;
-
-  /** 1984 was 甲子, the first year of the cycle. */
-  const GANZHI_EPOCH_YEAR = 1984;
-  const CYCLE_LENGTH = 60;
 
   it("has a corpus to check against", () => {
     // Given the generated corpus.
@@ -85,22 +81,41 @@ describe("conformance with the Hong Kong Observatory", () => {
     "agrees on the sexagenary year for every published date",
     () => {
       // Given the same dates, whose 干支 year the Observatory also prints.
-      // When the cycle is counted from 1984, which was 甲子.
+      // When each is asked of the library.
       // Then every year name matches. This checks two things at once: that the
-      // cycle arithmetic is right, and that nongli puts the year boundary where
-      // the Observatory does, which is the New Year and not 立春.
+      // cycle arithmetic and its 1984 anchor are right, and that the default
+      // boundary is where the Observatory puts it, which is the New Year and
+      // not 立春.
       const wrong = corpus.entries.filter((entry) => {
-        const { year } = toChinese(Temporal.PlainDate.from(entry.iso));
-        const index =
-          (((year - GANZHI_EPOCH_YEAR) % CYCLE_LENGTH) + CYCLE_LENGTH) %
-          CYCLE_LENGTH;
-        const { stem, branch } = sexagenary(index);
+        const { stem, branch } = sexagenaryYearOf(
+          Temporal.PlainDate.from(entry.iso),
+        );
         return stem + branch !== entry.ganzhiYear;
       });
 
       assertArrayEmpty(
         wrong.map((entry) => `${entry.iso}: ${entry.ganzhiYear}`),
       );
+    },
+    CORPUS_SWEEP_TIMEOUT_MS,
+  );
+
+  it(
+    "agrees on the zodiac animal for every published date",
+    () => {
+      // Given the same dates, whose 生肖 the Observatory prints in traditional
+      // script.
+      // When each is asked of the library.
+      // Then every animal matches. Six years reaches seven of the twelve
+      // animals, and the other five follow from the same fixed branch mapping,
+      // so this checks the mapping rather than sampling it.
+      const wrong = corpus.entries.filter(
+        (entry) =>
+          zodiacOf(Temporal.PlainDate.from(entry.iso)).traditional !==
+          entry.zodiac,
+      );
+
+      assertArrayEmpty(wrong.map((entry) => `${entry.iso}: ${entry.zodiac}`));
     },
     CORPUS_SWEEP_TIMEOUT_MS,
   );

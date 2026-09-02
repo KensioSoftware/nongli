@@ -128,6 +128,8 @@ interface CorpusEntry {
   readonly day: number;
   /** The sexagenary year as the Observatory prints it, e.g. `"丙午"`. */
   readonly ganzhiYear: string;
+  /** The zodiac animal as the Observatory prints it, in traditional script. */
+  readonly zodiac: string;
 }
 
 function parseMonth(text: string): { month: number; isLeap: boolean } {
@@ -171,10 +173,11 @@ function entriesFrom(csv: string, fileYear: number): CorpusEntry[] {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .map((line) => {
-      const [date, ganzhi, , month, day] = line.split(",");
+      const [date, ganzhi, zodiac, month, day] = line.split(",");
       if (
         date === undefined ||
         ganzhi === undefined ||
+        zodiac === undefined ||
         month === undefined ||
         day === undefined
       ) {
@@ -189,6 +192,7 @@ function entriesFrom(csv: string, fileYear: number): CorpusEntry[] {
         day: parseDay(day),
         // The Observatory writes "丙午年"; the year name is the first two.
         ganzhiYear: ganzhi.replace("年", ""),
+        zodiac,
       };
     });
 }
